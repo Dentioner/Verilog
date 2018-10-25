@@ -1,0 +1,8 @@
+INFO: [VRFC 10-2263] Analyzing Verilog file "D:/zwy_verilog_project/add4/add4.srcs/sources_1/new/add_1.v" into library xil_defaultlib
+INFO: [VRFC 10-311] analyzing module add4
+INFO: [VRFC 10-311] analyzing module single_add
+INFO: [VRFC 10-2263] Analyzing Verilog file "D:/zwy_verilog_project/add4/add4.srcs/sim_1/new/test2.v" into library xil_defaultlib
+INFO: [VRFC 10-311] analyzing module test
+ERROR: [VRFC 10-1280] procedural assignment to a non-register CI is not permitted, left-hand side should be reg/integer/time/genvar [D:/zwy_verilog_project/add4/add4.srcs/sim_1/new/test2.v:36]
+ERROR: [VRFC 10-1280] procedural assignment to a non-register CI is not permitted, left-hand side should be reg/integer/time/genvar [D:/zwy_verilog_project/add4/add4.srcs/sim_1/new/test2.v:36]
+ERROR: [VRFC 10-1040] module test ignored due to previous errors [D:/zwy_verilog_project/add4/add4.srcs/sim_1/new/test2.v:23]
