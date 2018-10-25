@@ -1,0 +1,12 @@
+#-----------------------------------------------------------
+# Vivado v2018.2 (64-bit)
+# SW Build 2258646 on Thu Jun 14 20:03:12 MDT 2018
+# IP Build 2256618 on Thu Jun 14 22:10:49 MDT 2018
+# Start of session at: Thu Oct 25 20:16:54 2018
+# Process ID: 9716
+# Current directory: E:/coding/verilog/Verilog/example5.7/example5.7.runs/impl_1
+# Command line: vivado.exe -log fulladd4.vdi -applog -product Vivado -messageDb vivado.pb -mode batch -source fulladd4.tcl -notrace
+# Log file: E:/coding/verilog/Verilog/example5.7/example5.7.runs/impl_1/fulladd4.vdi
+# Journal file: E:/coding/verilog/Verilog/example5.7/example5.7.runs/impl_1\vivado.jou
+#-----------------------------------------------------------
+source fulladd4.tcl -notrace

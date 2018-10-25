@@ -1,0 +1,7 @@
+INFO: [VRFC 10-2263] Analyzing Verilog file "E:/coding/verilog/Verilog/example5.7/example5.7.srcs/sources_1/new/fulladd.v" into library xil_defaultlib
+INFO: [VRFC 10-311] analyzing module fulladd
+INFO: [VRFC 10-311] analyzing module fulladd4
+INFO: [VRFC 10-2263] Analyzing Verilog file "E:/coding/verilog/Verilog/example5.7/example5.7.srcs/sim_1/new/test.v" into library xil_defaultlib
+INFO: [VRFC 10-311] analyzing module test
+INFO: [VRFC 10-2263] Analyzing Verilog file "E:/coding/verilog/Verilog/example5.7/example5.7.sim/sim_1/behav/xsim/glbl.v" into library xil_defaultlib
+INFO: [VRFC 10-311] analyzing module glbl

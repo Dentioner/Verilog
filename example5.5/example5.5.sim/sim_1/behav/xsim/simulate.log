@@ -1,0 +1,10 @@
+Vivado Simulator 2018.2
+Time resolution is 1 ps
+IN0 = 1, IN1 = 0, IN2 = 1, IN3 = 0
+
+S1 = 0, S0 = 0, OUTPUT = 1
+
+S1 = 1, S0 = 0, OUTPUT = 1
+
+S1 = 1, S0 = 1, OUTPUT = 0
+

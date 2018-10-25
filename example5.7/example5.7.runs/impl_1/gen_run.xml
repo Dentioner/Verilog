@@ -1,0 +1,107 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<GenRun Id="impl_1" LaunchPart="xc7vx485tffg1157-1" LaunchTime="1540469805">
+  <File Type="BITSTR-BMM" Name="fulladd4_bd.bmm"/>
+  <File Type="OPT-METHODOLOGY-DRC" Name="fulladd4_methodology_drc_opted.rpt"/>
+  <File Type="INIT-TIMING" Name="fulladd4_timing_summary_init.rpt"/>
+  <File Type="ROUTE-PWR" Name="fulladd4_power_routed.rpt"/>
+  <File Type="PA-TCL" Name="fulladd4.tcl"/>
+  <File Type="OPT-TIMING" Name="fulladd4_timing_summary_opted.rpt"/>
+  <File Type="OPT-DCP" Name="fulladd4_opt.dcp"/>
+  <File Type="ROUTE-PWR-SUM" Name="fulladd4_power_summary_routed.pb"/>
+  <File Type="REPORTS-TCL" Name="fulladd4_reports.tcl"/>
+  <File Type="OPT-DRC" Name="fulladd4_drc_opted.rpt"/>
+  <File Type="OPT-HWDEF" Name="fulladd4.hwdef"/>
+  <File Type="PWROPT-DCP" Name="fulladd4_pwropt.dcp"/>
+  <File Type="PWROPT-DRC" Name="fulladd4_drc_pwropted.rpt"/>
+  <File Type="PWROPT-TIMING" Name="fulladd4_timing_summary_pwropted.rpt"/>
+  <File Type="PLACE-DCP" Name="fulladd4_placed.dcp"/>
+  <File Type="PLACE-IO" Name="fulladd4_io_placed.rpt"/>
+  <File Type="PLACE-CLK" Name="fulladd4_clock_utilization_placed.rpt"/>
+  <File Type="PLACE-UTIL" Name="fulladd4_utilization_placed.rpt"/>
+  <File Type="PLACE-UTIL-PB" Name="fulladd4_utilization_placed.pb"/>
+  <File Type="PLACE-CTRL" Name="fulladd4_control_sets_placed.rpt"/>
+  <File Type="PLACE-SIMILARITY" Name="fulladd4_incremental_reuse_placed.rpt"/>
+  <File Type="PLACE-PRE-SIMILARITY" Name="fulladd4_incremental_reuse_pre_placed.rpt"/>
+  <File Type="BG-BGN" Name="fulladd4.bgn"/>
+  <File Type="PLACE-TIMING" Name="fulladd4_timing_summary_placed.rpt"/>
+  <File Type="POSTPLACE-PWROPT-DCP" Name="fulladd4_postplace_pwropt.dcp"/>
+  <File Type="BG-BIN" Name="fulladd4.bin"/>
+  <File Type="POSTPLACE-PWROPT-TIMING" Name="fulladd4_timing_summary_postplace_pwropted.rpt"/>
+  <File Type="PHYSOPT-DCP" Name="fulladd4_physopt.dcp"/>
+  <File Type="PHYSOPT-DRC" Name="fulladd4_drc_physopted.rpt"/>
+  <File Type="BITSTR-MSK" Name="fulladd4.msk"/>
+  <File Type="PHYSOPT-TIMING" Name="fulladd4_timing_summary_physopted.rpt"/>
+  <File Type="ROUTE-ERROR-DCP" Name="fulladd4_routed_error.dcp"/>
+  <File Type="ROUTE-DCP" Name="fulladd4_routed.dcp"/>
+  <File Type="ROUTE-BLACKBOX-DCP" Name="fulladd4_routed_bb.dcp"/>
+  <File Type="ROUTE-DRC" Name="fulladd4_drc_routed.rpt"/>
+  <File Type="ROUTE-DRC-PB" Name="fulladd4_drc_routed.pb"/>
+  <File Type="BITSTR-LTX" Name="debug_nets.ltx"/>
+  <File Type="BITSTR-LTX" Name="fulladd4.ltx"/>
+  <File Type="ROUTE-DRC-RPX" Name="fulladd4_drc_routed.rpx"/>
+  <File Type="BITSTR-MMI" Name="fulladd4.mmi"/>
+  <File Type="ROUTE-METHODOLOGY-DRC" Name="fulladd4_methodology_drc_routed.rpt"/>
+  <File Type="ROUTE-METHODOLOGY-DRC-RPX" Name="fulladd4_methodology_drc_routed.rpx"/>
+  <File Type="BITSTR-SYSDEF" Name="fulladd4.sysdef"/>
+  <File Type="ROUTE-METHODOLOGY-DRC-PB" Name="fulladd4_methodology_drc_routed.pb"/>
+  <File Type="ROUTE-PWR-RPX" Name="fulladd4_power_routed.rpx"/>
+  <File Type="ROUTE-STATUS" Name="fulladd4_route_status.rpt"/>
+  <File Type="ROUTE-STATUS-PB" Name="fulladd4_route_status.pb"/>
+  <File Type="ROUTE-TIMINGSUMMARY" Name="fulladd4_timing_summary_routed.rpt"/>
+  <File Type="ROUTE-TIMING-PB" Name="fulladd4_timing_summary_routed.pb"/>
+  <File Type="ROUTE-TIMING-RPX" Name="fulladd4_timing_summary_routed.rpx"/>
+  <File Type="ROUTE-SIMILARITY" Name="fulladd4_incremental_reuse_routed.rpt"/>
+  <File Type="ROUTE-CLK" Name="fulladd4_clock_utilization_routed.rpt"/>
+  <File Type="ROUTE-BUS-SKEW" Name="fulladd4_bus_skew_routed.rpt"/>
+  <File Type="ROUTE-BUS-SKEW-PB" Name="fulladd4_bus_skew_routed.pb"/>
+  <File Type="ROUTE-BUS-SKEW-RPX" Name="fulladd4_bus_skew_routed.rpx"/>
+  <File Type="POSTROUTE-PHYSOPT-DCP" Name="fulladd4_postroute_physopt.dcp"/>
+  <File Type="POSTROUTE-PHYSOPT-BLACKBOX-DCP" Name="fulladd4_postroute_physopt_bb.dcp"/>
+  <File Type="POSTROUTE-PHYSOPT-TIMING" Name="fulladd4_timing_summary_postroute_physopted.rpt"/>
+  <File Type="POSTROUTE-PHYSOPT-TIMING-PB" Name="fulladd4_timing_summary_postroute_physopted.pb"/>
+  <File Type="POSTROUTE-PHYSOPT-TIMING-RPX" Name="fulladd4_timing_summary_postroute_physopted.rpx"/>
+  <File Type="POSTROUTE-PHYSOPT-BUS-SKEW" Name="fulladd4_bus_skew_postroute_physopted.rpt"/>
+  <File Type="POSTROUTE-PHYSOPT-BUS-SKEW-PB" Name="fulladd4_bus_skew_postroute_physopted.pb"/>
+  <File Type="BG-BIT" Name="fulladd4.bit"/>
+  <File Type="POSTROUTE-PHYSOPT-BUS-SKEW-RPX" Name="fulladd4_bus_skew_postroute_physopted.rpx"/>
+  <File Type="BITSTR-RBT" Name="fulladd4.rbt"/>
+  <File Type="BITSTR-NKY" Name="fulladd4.nky"/>
+  <File Type="BG-DRC" Name="fulladd4.drc"/>
+  <File Type="RDI-RDI" Name="fulladd4.vdi"/>
+  <File Type="WBT-USG" Name="usage_statistics_webtalk.html"/>
+  <FileSet Name="sources" Type="DesignSrcs" RelSrcDir="$PSRCDIR/sources_1">
+    <Filter Type="Srcs"/>
+    <File Path="$PSRCDIR/sources_1/new/fulladd.v">
+      <FileInfo>
+        <Attr Name="UsedIn" Val="synthesis"/>
+        <Attr Name="UsedIn" Val="implementation"/>
+        <Attr Name="UsedIn" Val="simulation"/>
+      </FileInfo>
+    </File>
+    <Config>
+      <Option Name="DesignMode" Val="RTL"/>
+      <Option Name="TopModule" Val="fulladd4"/>
+      <Option Name="TopAutoSet" Val="TRUE"/>
+    </Config>
+  </FileSet>
+  <FileSet Name="constrs_in" Type="Constrs" RelSrcDir="$PSRCDIR/constrs_1">
+    <Filter Type="Constrs"/>
+    <Config>
+      <Option Name="ConstrsType" Val="XDC"/>
+    </Config>
+  </FileSet>
+  <Strategy Version="1" Minor="2">
+    <StratHandle Name="Vivado Implementation Defaults" Flow="Vivado Implementation 2018">
+      <Desc>Default settings for Implementation.</Desc>
+    </StratHandle>
+    <Step Id="init_design"/>
+    <Step Id="opt_design"/>
+    <Step Id="power_opt_design"/>
+    <Step Id="place_design"/>
+    <Step Id="post_place_power_opt_design"/>
+    <Step Id="phys_opt_design"/>
+    <Step Id="route_design"/>
+    <Step Id="post_route_phys_opt_design"/>
+    <Step Id="write_bitstream"/>
+  </Strategy>
+</GenRun>
