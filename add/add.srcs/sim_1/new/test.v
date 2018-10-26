@@ -3,9 +3,9 @@
 // Company: 
 // Engineer: 
 // 
-// Create Date: 2018/10/25 11:46:46
+// Create Date: 2018/10/26 20:16:10
 // Design Name: 
-// Module Name: test2
+// Module Name: test
 // Project Name: 
 // Target Devices: 
 // Tool Versions: 
@@ -24,28 +24,22 @@ module test();
 reg clk;
 reg rst;
 
-reg[3:0] A;
-reg[3:0] B;
-wire [3:0] S;
-wire CO;
-reg CI;
+reg [3:0] a;
+reg [3:0] b;
+wire [3:0] out;
+wire cout;
+reg cin;
 
-initial begin
-    A = 10;
-    B = 5;
-    CI = 0;
+initial
+begin
+    a = 15;
+    b = 7;
+    cin = 0;
     clk = 0;
 end
 
-always #10 clk=~clk;
+always #10 clk = ~clk;
 
-add4 add(
-    .A(A),
-    .B(B),
-    .CI(CI), 
-    .S(S),
-    .CO(CO)
-);
+fulladd fa1(.a(a), .b(b), .c_in(cin), .sum(out), .c_out(cout));
 
 endmodule
-
