@@ -1,0 +1,31 @@
+#-----------------------------------------------------------
+# Vivado v2018.2 (64-bit)
+# SW Build 2258646 on Thu Jun 14 20:03:12 MDT 2018
+# IP Build 2256618 on Thu Jun 14 22:10:49 MDT 2018
+# Start of session at: Tue Oct 30 10:36:12 2018
+# Process ID: 3628
+# Current directory: E:/coding/verilog/Verilog/add4
+# Command line: vivado.exe -gui_launcher_event rodinguilauncherevent5540 E:\coding\verilog\Verilog\add4\add4.xpr
+# Log file: E:/coding/verilog/Verilog/add4/vivado.log
+# Journal file: E:/coding/verilog/Verilog/add4\vivado.jou
+#-----------------------------------------------------------
+start_gui
+open_project E:/coding/verilog/Verilog/add4/add4.xpr
+Scanning sources...
+Finished scanning sources
+INFO: [IP_Flow 19-234] Refreshing IP repositories
+INFO: [IP_Flow 19-1704] No user IP repositories specified
+INFO: [IP_Flow 19-2313] Loaded Vivado IP repository 'D:/verilog/ver2018.2/vivado_2018_2/Vivado/2018.2/data/ip'.
+open_project: Time (s): cpu = 00:00:16 ; elapsed = 00:00:10 . Memory (MB): peak = 824.516 ; gain = 89.262
+update_compile_order -fileset sources_1
+close_project
+open_project E:/coding/verilog/Verilog/add/add.xpr
+Scanning sources...
+Finished scanning sources
+INFO: [IP_Flow 19-234] Refreshing IP repositories
+INFO: [IP_Flow 19-1704] No user IP repositories specified
+INFO: [IP_Flow 19-2313] Loaded Vivado IP repository 'D:/verilog/ver2018.2/vivado_2018_2/Vivado/2018.2/data/ip'.
+open_project: Time (s): cpu = 00:00:08 ; elapsed = 00:00:05 . Memory (MB): peak = 868.586 ; gain = 0.000
+update_compile_order -fileset sources_1
+exit
+INFO: [Common 17-206] Exiting Vivado at Tue Oct 30 11:35:36 2018...

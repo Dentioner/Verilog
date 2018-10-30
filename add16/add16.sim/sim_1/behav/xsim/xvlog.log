@@ -1,0 +1,6 @@
+INFO: [VRFC 10-2263] Analyzing Verilog file "E:/coding/verilog/Verilog/add16/add16.srcs/sources_1/new/add16.v" into library xil_defaultlib
+INFO: [VRFC 10-311] analyzing module add16
+INFO: [VRFC 10-311] analyzing module add4
+INFO: [VRFC 10-311] analyzing module single_add
+INFO: [VRFC 10-2263] Analyzing Verilog file "E:/coding/verilog/Verilog/add16/add16.srcs/sim_1/new/test.v" into library xil_defaultlib
+INFO: [VRFC 10-311] analyzing module test
