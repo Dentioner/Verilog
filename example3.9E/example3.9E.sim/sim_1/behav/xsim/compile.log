@@ -1,0 +1,4 @@
+INFO: [VRFC 10-2263] Analyzing Verilog file "E:/coding/verilog/Verilog/example3.9E/example3.9E.srcs/sources_1/new/mult_for.v" into library xil_defaultlib
+INFO: [VRFC 10-311] analyzing module mult_for
+INFO: [VRFC 10-2263] Analyzing Verilog file "E:/coding/verilog/Verilog/example3.9E/example3.9E.srcs/sim_1/new/test.v" into library xil_defaultlib
+INFO: [VRFC 10-311] analyzing module test
