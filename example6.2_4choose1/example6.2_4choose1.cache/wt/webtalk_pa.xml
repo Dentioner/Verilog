@@ -3,7 +3,11 @@
 <!--The data in this file is primarily intended for consumption by Xilinx tools.
 The structure and the elements are likely to change over the next few releases.
 This means code written to parse this file will need to be revisited each subsequent release.-->
+<<<<<<< HEAD
 <application name="pa" timeStamp="Fri Nov  9 23:10:17 2018">
+=======
+<application name="pa" timeStamp="Fri Nov  9 21:55:10 2018">
+>>>>>>> eafa11a8ed896268e7471b72eaf16957843798c3
 <section name="Project Information" visible="false">
 <property name="ProjectID" value="4401d16a06da4b2aa4cef158102341f1" type="ProjectID"/>
 <property name="ProjectIteration" value="1" type="ProjectIteration"/>
@@ -18,6 +22,7 @@ This means code written to parse this file will need to be revisited each subseq
 </item>
 <item name="Java Command Handlers">
 <property name="AddSources" value="2" type="JavaHandler"/>
+<<<<<<< HEAD
 <property name="CloseProject" value="2" type="JavaHandler"/>
 <property name="NewProject" value="1" type="JavaHandler"/>
 <property name="SimulationBreak" value="9" type="JavaHandler"/>
@@ -56,14 +61,44 @@ This means code written to parse this file will need to be revisited each subseq
 <property name="SyntheticaGettingStartedView_RECENT_PROJECTS" value="1" type="GuiHandlerData"/>
 <property name="TaskBanner_CLOSE" value="10" type="GuiHandlerData"/>
 <property name="TclConsoleView_TCL_CONSOLE_CODE_EDITOR" value="1" type="GuiHandlerData"/>
+=======
+<property name="CloseProject" value="1" type="JavaHandler"/>
+<property name="NewProject" value="1" type="JavaHandler"/>
+<property name="SimulationBreak" value="7" type="JavaHandler"/>
+<property name="SimulationRun" value="7" type="JavaHandler"/>
+<property name="SimulationRunAll" value="7" type="JavaHandler"/>
+</item>
+<item name="Gui Handlers">
+<property name="AddSrcWizard_SPECIFY_SIMULATION_SPECIFIC_HDL_FILES" value="1" type="GuiHandlerData"/>
+<property name="BaseDialog_OK" value="13" type="GuiHandlerData"/>
+<property name="BaseDialog_YES" value="1" type="GuiHandlerData"/>
+<property name="CreateSrcFileDialog_FILE_NAME" value="2" type="GuiHandlerData"/>
+<property name="FileSetPanel_FILE_SET_PANEL_TREE" value="6" type="GuiHandlerData"/>
+<property name="FlowNavigatorTreePanel_FLOW_NAVIGATOR_TREE" value="9" type="GuiHandlerData"/>
+<property name="GettingStartedView_CREATE_NEW_PROJECT" value="1" type="GuiHandlerData"/>
+<property name="PACommandNames_ADD_SOURCES" value="1" type="GuiHandlerData"/>
+<property name="PACommandNames_SIMULATION_LIVE_BREAK" value="7" type="GuiHandlerData"/>
+<property name="PACommandNames_SIMULATION_LIVE_RUN_ALL" value="8" type="GuiHandlerData"/>
+<property name="PACommandNames_SIMULATION_RUN_BEHAVIORAL" value="8" type="GuiHandlerData"/>
+<property name="ProjectNameChooser_PROJECT_NAME" value="1" type="GuiHandlerData"/>
+<property name="RDIViews_WAVEFORM_VIEWER" value="55" type="GuiHandlerData"/>
+<property name="SrcChooserPanel_CREATE_FILE" value="2" type="GuiHandlerData"/>
+<property name="TaskBanner_CLOSE" value="9" type="GuiHandlerData"/>
+>>>>>>> eafa11a8ed896268e7471b72eaf16957843798c3
 <property name="WaveformNameTree_WAVEFORM_NAME_TREE" value="4" type="GuiHandlerData"/>
 <property name="WaveformView_GOTO_LAST_TIME" value="5" type="GuiHandlerData"/>
 <property name="WaveformView_GOTO_TIME_0" value="7" type="GuiHandlerData"/>
 </item>
 <item name="Other">
+<<<<<<< HEAD
 <property name="GuiMode" value="8" type="GuiMode"/>
 <property name="BatchMode" value="0" type="BatchMode"/>
 <property name="TclMode" value="6" type="TclMode"/>
+=======
+<property name="GuiMode" value="6" type="GuiMode"/>
+<property name="BatchMode" value="0" type="BatchMode"/>
+<property name="TclMode" value="5" type="TclMode"/>
+>>>>>>> eafa11a8ed896268e7471b72eaf16957843798c3
 </item>
 </section>
 </application>

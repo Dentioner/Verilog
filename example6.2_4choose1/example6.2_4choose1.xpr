@@ -31,7 +31,11 @@
     <Option Name="EnableBDX" Val="FALSE"/>
     <Option Name="DSAVendor" Val="xilinx"/>
     <Option Name="DSANumComputeUnits" Val="60"/>
+<<<<<<< HEAD
     <Option Name="WTXSimLaunchSim" Val="10"/>
+=======
+    <Option Name="WTXSimLaunchSim" Val="7"/>
+>>>>>>> eafa11a8ed896268e7471b72eaf16957843798c3
     <Option Name="WTModelSimLaunchSim" Val="0"/>
     <Option Name="WTQuestaLaunchSim" Val="0"/>
     <Option Name="WTIesLaunchSim" Val="0"/>
@@ -79,7 +83,10 @@
       </Config>
     </FileSet>
     <FileSet Name="sim_1" Type="SimulationSrcs" RelSrcDir="$PSRCDIR/sim_1">
+<<<<<<< HEAD
       <Filter Type="Srcs"/>
+=======
+>>>>>>> eafa11a8ed896268e7471b72eaf16957843798c3
       <File Path="$PSRCDIR/sim_1/new/test.v">
         <FileInfo>
           <Attr Name="UsedIn" Val="synthesis"/>
@@ -101,8 +108,11 @@
         <Option Name="TransportIntDelay" Val="0"/>
         <Option Name="SrcSet" Val="sources_1"/>
         <Option Name="XSimWcfgFile" Val="$PPRDIR/test_behav.wcfg"/>
+<<<<<<< HEAD
         <Option Name="xsim.simulate.log_all_signals" Val="true"/>
         <Option Name="xsim.simulate.saif_all_signals" Val="true"/>
+=======
+>>>>>>> eafa11a8ed896268e7471b72eaf16957843798c3
       </Config>
     </FileSet>
   </FileSets>

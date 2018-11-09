@@ -3,7 +3,11 @@
 <!--The data in this file is primarily intended for consumption by Xilinx tools.
 The structure and the elements are likely to change over the next few releases.
 This means code written to parse this file will need to be revisited each subsequent release.-->
+<<<<<<< HEAD
 <application name="pa" timeStamp="Fri Nov  9 23:12:34 2018">
+=======
+<application name="pa" timeStamp="Fri Nov  9 22:06:41 2018">
+>>>>>>> eafa11a8ed896268e7471b72eaf16957843798c3
 <section name="Project Information" visible="false">
 <property name="ProjectID" value="9754f76a85bd4b1497235f2d8ed882df" type="ProjectID"/>
 <property name="ProjectIteration" value="1" type="ProjectIteration"/>
@@ -37,7 +41,11 @@ This means code written to parse this file will need to be revisited each subseq
 <property name="CreateSrcFileDialog_FILE_NAME" value="2" type="GuiHandlerData"/>
 <property name="DefineModulesDialog_DEFINE_MODULES_AND_SPECIFY_IO_PORTS" value="1" type="GuiHandlerData"/>
 <property name="FileSetPanel_FILE_SET_PANEL_TREE" value="23" type="GuiHandlerData"/>
+<<<<<<< HEAD
 <property name="FlowNavigatorTreePanel_FLOW_NAVIGATOR_TREE" value="22" type="GuiHandlerData"/>
+=======
+<property name="FlowNavigatorTreePanel_FLOW_NAVIGATOR_TREE" value="20" type="GuiHandlerData"/>
+>>>>>>> eafa11a8ed896268e7471b72eaf16957843798c3
 <property name="GettingStartedView_CREATE_NEW_PROJECT" value="1" type="GuiHandlerData"/>
 <property name="GettingStartedView_OPEN_PROJECT" value="2" type="GuiHandlerData"/>
 <property name="GraphicalView_ZOOM_OUT" value="18" type="GuiHandlerData"/>
@@ -53,17 +61,28 @@ This means code written to parse this file will need to be revisited each subseq
 <property name="RDIViews_WAVEFORM_VIEWER" value="36" type="GuiHandlerData"/>
 <property name="SimulationLiveRunForComp_SPECIFY_TIME_AND_UNITS" value="4" type="GuiHandlerData"/>
 <property name="SrcChooserPanel_CREATE_FILE" value="2" type="GuiHandlerData"/>
+<<<<<<< HEAD
 <property name="SyntheticaGettingStartedView_RECENT_PROJECTS" value="3" type="GuiHandlerData"/>
 <property name="TaskBanner_CLOSE" value="28" type="GuiHandlerData"/>
+=======
+<property name="SyntheticaGettingStartedView_RECENT_PROJECTS" value="2" type="GuiHandlerData"/>
+<property name="TaskBanner_CLOSE" value="27" type="GuiHandlerData"/>
+>>>>>>> eafa11a8ed896268e7471b72eaf16957843798c3
 <property name="TclConsoleView_TCL_CONSOLE_CODE_EDITOR" value="2" type="GuiHandlerData"/>
 <property name="WaveformNameTree_WAVEFORM_NAME_TREE" value="8" type="GuiHandlerData"/>
 <property name="WaveformView_GOTO_LAST_TIME" value="19" type="GuiHandlerData"/>
 <property name="WaveformView_GOTO_TIME_0" value="2" type="GuiHandlerData"/>
 </item>
 <item name="Other">
+<<<<<<< HEAD
 <property name="GuiMode" value="8" type="GuiMode"/>
 <property name="BatchMode" value="0" type="BatchMode"/>
 <property name="TclMode" value="6" type="TclMode"/>
+=======
+<property name="GuiMode" value="7" type="GuiMode"/>
+<property name="BatchMode" value="0" type="BatchMode"/>
+<property name="TclMode" value="5" type="TclMode"/>
+>>>>>>> eafa11a8ed896268e7471b72eaf16957843798c3
 </item>
 </section>
 </application>

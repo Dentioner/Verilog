@@ -11,6 +11,7 @@
       </db_ref>
    </db_ref_list>
    <zoom_setting>
+<<<<<<< HEAD
       <ZoomStartTime time="2155939029320987fs"></ZoomStartTime>
       <ZoomEndTime time="2156009794135803fs"></ZoomEndTime>
       <Cursor1Time time="2155998000000000fs"></Cursor1Time>
@@ -20,6 +21,17 @@
       <ValueColumnWidth column_width="142"></ValueColumnWidth>
    </column_width_setting>
    <WVObjectSize size="9" />
+=======
+      <ZoomStartTime time="0fs"></ZoomStartTime>
+      <ZoomEndTime time="72100000001fs"></ZoomEndTime>
+      <Cursor1Time time="26900000000fs"></Cursor1Time>
+   </zoom_setting>
+   <column_width_setting>
+      <NameColumnWidth column_width="175"></NameColumnWidth>
+      <ValueColumnWidth column_width="146"></ValueColumnWidth>
+   </column_width_setting>
+   <WVObjectSize size="8" />
+>>>>>>> eafa11a8ed896268e7471b72eaf16957843798c3
    <wvobject fp_name="/test/clk" type="logic">
       <obj_property name="ElementShortName">clk</obj_property>
       <obj_property name="ObjectShortName">clk</obj_property>
@@ -48,6 +60,7 @@
       <obj_property name="ElementShortName">i3</obj_property>
       <obj_property name="ObjectShortName">i3</obj_property>
    </wvobject>
+<<<<<<< HEAD
    <wvobject fp_name="/test/out1" type="logic">
       <obj_property name="ElementShortName">out1</obj_property>
       <obj_property name="ObjectShortName">out1</obj_property>
@@ -55,5 +68,10 @@
    <wvobject fp_name="/test/out2" type="logic">
       <obj_property name="ElementShortName">out2</obj_property>
       <obj_property name="ObjectShortName">out2</obj_property>
+=======
+   <wvobject fp_name="/test/out" type="logic">
+      <obj_property name="ElementShortName">out</obj_property>
+      <obj_property name="ObjectShortName">out</obj_property>
+>>>>>>> eafa11a8ed896268e7471b72eaf16957843798c3
    </wvobject>
 </wave_config>

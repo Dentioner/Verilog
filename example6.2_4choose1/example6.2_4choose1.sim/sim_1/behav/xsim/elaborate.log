@@ -4,4 +4,15 @@ Running: D:/verilog/ver2018.2/vivado_2018_2/Vivado/2018.2/bin/unwrapped/win64.o/
 Using 2 slave threads.
 Starting static elaboration
 Completed static elaboration
+<<<<<<< HEAD
 INFO: [XSIM 43-4323] No Change in HDL. Linking previously generated obj files to create kernel
+=======
+Starting simulation data flow analysis
+Completed simulation data flow analysis
+Time Resolution for simulation is 1ps
+Compiling module xil_defaultlib.mux4_to_1
+Compiling module xil_defaultlib.mux4_to_1_ver2
+Compiling module xil_defaultlib.test
+Compiling module xil_defaultlib.glbl
+Built simulation snapshot test_behav
+>>>>>>> eafa11a8ed896268e7471b72eaf16957843798c3
