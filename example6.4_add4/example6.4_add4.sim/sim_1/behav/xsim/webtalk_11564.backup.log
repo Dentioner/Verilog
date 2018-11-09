@@ -1,0 +1,15 @@
+#-----------------------------------------------------------
+# Webtalk v2018.2 (64-bit)
+# SW Build 2258646 on Thu Jun 14 20:03:12 MDT 2018
+# IP Build 2256618 on Thu Jun 14 22:10:49 MDT 2018
+# Start of session at: Fri Nov  9 22:03:29 2018
+# Process ID: 11564
+# Current directory: E:/coding/verilog/Verilog/example6.4_add4/example6.4_add4.sim/sim_1/behav/xsim
+# Command line: wbtcv.exe -mode batch -source E:/coding/verilog/Verilog/example6.4_add4/example6.4_add4.sim/sim_1/behav/xsim/xsim.dir/test_behav/webtalk/xsim_webtalk.tcl -notrace
+# Log file: E:/coding/verilog/Verilog/example6.4_add4/example6.4_add4.sim/sim_1/behav/xsim/webtalk.log
+# Journal file: E:/coding/verilog/Verilog/example6.4_add4/example6.4_add4.sim/sim_1/behav/xsim\webtalk.jou
+#-----------------------------------------------------------
+source E:/coding/verilog/Verilog/example6.4_add4/example6.4_add4.sim/sim_1/behav/xsim/xsim.dir/test_behav/webtalk/xsim_webtalk.tcl -notrace
+INFO: [Common 17-186] 'E:/coding/verilog/Verilog/example6.4_add4/example6.4_add4.sim/sim_1/behav/xsim/xsim.dir/test_behav/webtalk/usage_statistics_ext_xsim.xml' has been successfully sent to Xilinx on Fri Nov  9 22:03:34 2018. For additional details about this file, please refer to the WebTalk help file at D:/verilog/ver2018.2/vivado_2018_2/Vivado/2018.2/doc/webtalk_introduction.html.
+webtalk_transmit: Time (s): cpu = 00:00:00 ; elapsed = 00:00:05 . Memory (MB): peak = 57.148 ; gain = 1.438
+INFO: [Common 17-206] Exiting Webtalk at Fri Nov  9 22:03:34 2018...
