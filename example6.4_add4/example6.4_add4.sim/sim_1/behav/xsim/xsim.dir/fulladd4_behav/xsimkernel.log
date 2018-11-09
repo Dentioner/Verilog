@@ -1,0 +1,7 @@
+Running: xsim.dir/fulladd4_behav/xsimk.exe -simmode gui -wdb fulladd4_behav.wdb -simrunnum 0 -socket 4742
+Design successfully loaded
+Design Loading Memory Usage: 8004 KB (Peak: 8004 KB)
+Design Loading CPU Usage: 62 ms
+Simulation completed
+Simulation Memory Usage: 8624 KB (Peak: 8624 KB)
+Simulation CPU Usage: 78 ms

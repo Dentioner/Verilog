@@ -1,0 +1,12 @@
+
+{ 
+    crc :  7686348059935907781  , 
+    ccp_crc :  0  , 
+    cmdline : " -wto 8136f9b57271424bac704f76bda18b13 --incr --debug typical --relax --mt 2 -L xil_defaultlib -L unisims_ver -L unimacro_ver -L secureip --snapshot fulladd4_behav xil_defaultlib.fulladd4 xil_defaultlib.glbl" , 
+    buildDate : "Jun 14 2018" , 
+    buildTime : "20:41:02" , 
+    linkCmd : "D:\\verilog\\ver2018.2\\vivado_2018_2\\Vivado\\2018.2\\data\\..\\tps\\mingw\\6.2.0\\win64.o\\nt\\bin\\gcc.exe -Wa,-W  -O -Wl,--stack,104857600 -o \"xsim.dir/fulladd4_behav/xsimk.exe\"   \"xsim.dir/fulladd4_behav/obj/xsim_0.win64.obj\" \"xsim.dir/fulladd4_behav/obj/xsim_1.win64.obj\" \"D:\\verilog\\ver2018.2\\vivado_2018_2\\Vivado\\2018.2\\lib\\win64.o\\\\librdi_simulator_kernel.dll\"  \"D:\\verilog\\ver2018.2\\vivado_2018_2\\Vivado\\2018.2\\lib\\win64.o\\\\librdi_simbridge_kernel.dll\"" , 
+    aggregate_nets : 
+    [ 
+    ] 
+} 

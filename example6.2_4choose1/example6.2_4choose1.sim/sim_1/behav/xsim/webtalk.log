@@ -1,0 +1,14 @@
+#-----------------------------------------------------------
+# Webtalk v2018.2 (64-bit)
+# SW Build 2258646 on Thu Jun 14 20:03:12 MDT 2018
+# IP Build 2256618 on Thu Jun 14 22:10:49 MDT 2018
+# Start of session at: Fri Nov  9 21:28:54 2018
+# Process ID: 9308
+# Current directory: E:/coding/verilog/Verilog/example6.2_4choose1/example6.2_4choose1.sim/sim_1/behav/xsim
+# Command line: wbtcv.exe -mode batch -source E:/coding/verilog/Verilog/example6.2_4choose1/example6.2_4choose1.sim/sim_1/behav/xsim/xsim.dir/test_behav/webtalk/xsim_webtalk.tcl -notrace
+# Log file: E:/coding/verilog/Verilog/example6.2_4choose1/example6.2_4choose1.sim/sim_1/behav/xsim/webtalk.log
+# Journal file: E:/coding/verilog/Verilog/example6.2_4choose1/example6.2_4choose1.sim/sim_1/behav/xsim\webtalk.jou
+#-----------------------------------------------------------
+source E:/coding/verilog/Verilog/example6.2_4choose1/example6.2_4choose1.sim/sim_1/behav/xsim/xsim.dir/test_behav/webtalk/xsim_webtalk.tcl -notrace
+webtalk_transmit: Time (s): cpu = 00:00:00 ; elapsed = 00:00:06 . Memory (MB): peak = 57.398 ; gain = 1.430
+INFO: [Common 17-206] Exiting Webtalk at Fri Nov  9 21:29:01 2018...
