@@ -1,0 +1,12 @@
+#-----------------------------------------------------------
+# Webtalk v2018.2 (64-bit)
+# SW Build 2258646 on Thu Jun 14 20:03:12 MDT 2018
+# IP Build 2256618 on Thu Jun 14 22:10:49 MDT 2018
+# Start of session at: Mon Nov 12 21:43:13 2018
+# Process ID: 19432
+# Current directory: E:/coding/verilog/Verilog/4bit_pulse_add/4bit_pulse_add.sim/sim_1/behav/xsim
+# Command line: wbtcv.exe -mode batch -source E:/coding/verilog/Verilog/4bit_pulse_add/4bit_pulse_add.sim/sim_1/behav/xsim/xsim.dir/test_behav/webtalk/xsim_webtalk.tcl -notrace
+# Log file: E:/coding/verilog/Verilog/4bit_pulse_add/4bit_pulse_add.sim/sim_1/behav/xsim/webtalk.log
+# Journal file: E:/coding/verilog/Verilog/4bit_pulse_add/4bit_pulse_add.sim/sim_1/behav/xsim\webtalk.jou
+#-----------------------------------------------------------
+source E:/coding/verilog/Verilog/4bit_pulse_add/4bit_pulse_add.sim/sim_1/behav/xsim/xsim.dir/test_behav/webtalk/xsim_webtalk.tcl -notrace

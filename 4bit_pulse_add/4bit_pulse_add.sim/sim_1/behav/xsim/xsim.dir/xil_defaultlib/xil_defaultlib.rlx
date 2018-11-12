@@ -1,0 +1,9 @@
+0.6
+2018.2
+Jun 14 2018
+20:41:02
+E:/coding/verilog/Verilog/4bit_pulse_add/4bit_pulse_add.sim/sim_1/behav/xsim/glbl.v,1529022455,verilog,,,,glbl,,,,,,,,
+E:/coding/verilog/Verilog/4bit_pulse_add/4bit_pulse_add.srcs/sim_1/new/test.v,1542030312,verilog,,,,test,,,,,,,,
+E:/coding/verilog/Verilog/4bit_pulse_add/4bit_pulse_add.srcs/sources_1/new/dff.v,1542029310,verilog,,E:/coding/verilog/Verilog/4bit_pulse_add/4bit_pulse_add.srcs/sources_1/new/pulse4.v,,dff,,,,,,,,
+E:/coding/verilog/Verilog/4bit_pulse_add/4bit_pulse_add.srcs/sources_1/new/pulse4.v,1542029503,verilog,,E:/coding/verilog/Verilog/4bit_pulse_add/4bit_pulse_add.srcs/sources_1/new/tff.v,,pulse4,,,,,,,,
+E:/coding/verilog/Verilog/4bit_pulse_add/4bit_pulse_add.srcs/sources_1/new/tff.v,1542030136,verilog,,E:/coding/verilog/Verilog/4bit_pulse_add/4bit_pulse_add.srcs/sim_1/new/test.v,,tff,,,,,,,,
