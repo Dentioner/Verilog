@@ -3,9 +3,9 @@
 // Company: 
 // Engineer: 
 // 
-// Create Date: 2018/11/13 10:53:14
+// Create Date: 2018/11/16 21:21:12
 // Design Name: 
-// Module Name: test
+// Module Name: bitwise_xor
 // Project Name: 
 // Target Devices: 
 // Tool Versions: 
@@ -20,27 +20,18 @@
 //////////////////////////////////////////////////////////////////////////////////
 
 
-module test();
-reg A, B, clk, reset;
-wire out, bug;
-initial
-begin
-    A = 0;
-    B= 0;
-    clk = 0;
-    reset = 1;
+module bitwise_xor(out, i0, i1);
+parameter N = 32;
+output [N-1:0] out;
+input [N-1:0]i0, i1;
+
+genvar j;
+generate
+for (j = 0; j<N; j = j+1)
+begin:xor_loop
+    xor g1 (out[j], i0[j], i1[j]);
+
     
 end
-always #10 clk = ~clk;
-always @(posedge clk)
-begin
-    A = {$random}%2;
-    B = {$random}%2;
-    reset = 0;
-    
-end
-
-state s1 (.A(A), .B(B), .clk(clk), .out(out), .bug(bug), .reset(reset));
-
-
+endgenerate
 endmodule

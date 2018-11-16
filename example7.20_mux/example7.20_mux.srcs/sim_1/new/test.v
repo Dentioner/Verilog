@@ -3,7 +3,7 @@
 // Company: 
 // Engineer: 
 // 
-// Create Date: 2018/11/13 10:53:14
+// Create Date: 2018/11/16 20:05:52
 // Design Name: 
 // Module Name: test
 // Project Name: 
@@ -21,26 +21,37 @@
 
 
 module test();
-reg A, B, clk, reset;
-wire out, bug;
+wire out0, out1, out2, out3;
+reg in;
+reg s1, s0;
+reg clk;
+reg [1:0]state_of_in;
 initial
 begin
-    A = 0;
-    B= 0;
+    in = 0;
+    s1 = 0;
+    s0 = 0;
     clk = 0;
-    reset = 1;
-    
+    state_of_in = 2'b00;
 end
+
 always #10 clk = ~clk;
 always @(posedge clk)
 begin
-    A = {$random}%2;
-    B = {$random}%2;
-    reset = 0;
-    
+    state_of_in = {$random}%4;
+    s1 = {$random}%2;
+    s0 = {$random}%2;
+end
+always @(state_of_in)
+begin
+    case(state_of_in)
+        0: in = 1'b0;
+        1: in = 1'b1;
+        2: in = 1'bx;
+        3: in = 1'bz;
+    endcase
 end
 
-state s1 (.A(A), .B(B), .clk(clk), .out(out), .bug(bug), .reset(reset));
-
+demultiplexer1_to_4 d1 (out0, out1, out2, out3, in, s1, s0);
 
 endmodule

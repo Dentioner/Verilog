@@ -3,7 +3,7 @@
 // Company: 
 // Engineer: 
 // 
-// Create Date: 2018/11/13 10:53:14
+// Create Date: 2018/11/16 21:24:44
 // Design Name: 
 // Module Name: test
 // Project Name: 
@@ -21,26 +21,24 @@
 
 
 module test();
-reg A, B, clk, reset;
-wire out, bug;
+parameter N = 32;
+wire [N-1:0] out;
+reg [N-1:0]i0, i1;
+reg clk;
 initial
 begin
-    A = 0;
-    B= 0;
+    i0 = 0;
+    i1 = 0;
     clk = 0;
-    reset = 1;
-    
 end
-always #10 clk = ~clk;
-always @(posedge clk)
+
+
+always#50 clk = ~clk;
+always@(posedge clk)
 begin
-    A = {$random}%2;
-    B = {$random}%2;
-    reset = 0;
+    i0 = {$random}%4096;
+    i1 = {$random}%4096;
     
 end
-
-state s1 (.A(A), .B(B), .clk(clk), .out(out), .bug(bug), .reset(reset));
-
-
+bitwise_xor b1 (out, i0, i1);
 endmodule

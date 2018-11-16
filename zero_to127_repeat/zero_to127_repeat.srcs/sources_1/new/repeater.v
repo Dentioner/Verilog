@@ -3,9 +3,9 @@
 // Company: 
 // Engineer: 
 // 
-// Create Date: 2018/11/13 10:53:14
+// Create Date: 2018/11/16 20:29:17
 // Design Name: 
-// Module Name: test
+// Module Name: repeater
 // Project Name: 
 // Target Devices: 
 // Tool Versions: 
@@ -20,27 +20,19 @@
 //////////////////////////////////////////////////////////////////////////////////
 
 
-module test();
-reg A, B, clk, reset;
-wire out, bug;
+module repeater();
+
+integer count;
+
 initial
 begin
-    A = 0;
-    B= 0;
-    clk = 0;
-    reset = 1;
-    
+    count = 0;
+    repeat(128)
+    begin
+        $display("count = %d\n", count);
+        count = count + 1;
+        
+    end
 end
-always #10 clk = ~clk;
-always @(posedge clk)
-begin
-    A = {$random}%2;
-    B = {$random}%2;
-    reset = 0;
-    
-end
-
-state s1 (.A(A), .B(B), .clk(clk), .out(out), .bug(bug), .reset(reset));
-
 
 endmodule

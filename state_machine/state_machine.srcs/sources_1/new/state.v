@@ -20,15 +20,15 @@
 //////////////////////////////////////////////////////////////////////////////////
 
 
-module state(A, B, clk, out);
-input A, B, clk;
-output wire out;
+module state(A, B, clk, reset,out, bug);
+input A, B, clk, reset;
+output reg out, bug;
 
-reg [3:0] state = 3'b000;
-reg re_out;
+reg [3:0] state;
+
 wire [1:0]in;
 assign in = {A,B};
-assign out = re_out;
+
 
 
 parameter S0 = 3'b000;
@@ -47,247 +47,261 @@ parameter in3 = 2'b11;
 
 always@(posedge clk)
 begin
-     //$display("0000");
-    //ok
-        
-    if(state == S0)
+    if(reset == 1)
+        state = S0;
+    else
     begin
-        $display("111111");
-        if (in == in3)
-        begin
-            state <= S1;
-            $display("%d", state);
-            //re_out <= 0;
-            
-        end
-        else if (in == in0)
-        begin
-            state <= S5;
-            $display("%d", state);
-            //re_out <= 1;
-        end
-        else
-        begin
-            state <= S0;
-            $display ("The state is %d and the input is %d, this is not a valid input.\n", state, in);//bugs
-        end
-    end
-    
-    
-    else if (state == S1)
-    begin
-     $display("111111");
-        if (in == in2)
-            begin
-                state <= S4;
-                $display("%d", state);
-               //re_out <= 1;
-                
-            end
-            else if (in == in1)
-            begin
-                state <= S3;
-                $display("%d", state);
-                //re_out <= 0;
-            end
-            else
-            begin
-            state <= S1;
-            $display ("The state is %d and the input is %d, this is not a valid input.\n", state, in);//bugs
-            end
-    end
-    
-    else if (state == S2)
-    
-       begin
-        $display("111111");
-           if (in == in0)
-               begin
-                   state <= S1;
-                   $display("%d", state);
-                   //re_out <= 1;
-                   
-               end
-               else if (in == in2)
-               begin
-                   state <= S5;
-                   $display("%d", state);
-                  // re_out <= 0;
-               end
-               else
-               begin
-               state <= S2;
-               $display ("The state is %d and the input is %d, this is not a valid input.\n", state, in);//bugs
-               end
-       end
-       
-    else if (state == S3)
-          begin
-              if (in == in0)
-                  begin
-                      state <= S2;
-                      $display("%d", state);
-                     //re_out <= 0;
-                      
-                  end
-                  else if (in == in2)
-                  begin
-                      state <= S4;
-                      $display("%d", state);
-                      //re_out <= 1;
-                  end
-                  else
-                  begin
-                  state <= S3;
-                  $display ("The state is %d and the input is %d, this is not a valid input.\n", state, in);//bugs
+        case(state)
+            S0:
+                begin
+                    if (in == in3)
+                    begin
+                        
+                        bug = 0;
+                        state = S1;                       
                     end
-          end
-       
-    else if (state == S4)
-             begin
-                 if (in == in2)
-                     begin
-                         state <= S3;
-                         $display("%d", state);
-                        // re_out <= 0;
-                         
-                     end
-                     else if (in == in1)
-                     begin
-                         state <= S5;
-                         $display("%d", state);
-                         //re_out <= 1;
-                     end
-                     else
-                     begin
-                     state <= S4;
-                     $display ("The state is %d and the input is %d, this is not a valid input.\n", state, in);//bugs
+                    else if (in == in0)
+                    begin
+                        
+                        bug = 0;
+                        state = S5;
                     end
-             end
-       
-    else if (state == S5)
+                    else
+                    begin
+                        $display("Here!\n");
+                        bug = 1;
+                        state = S0;
+                    end
+                end
+            S1:
+                begin
+                    if (in == in1)
+                    begin
+
+                        bug = 0; 
+                        state = S3;                      
+                    end
+                    else if (in == in2)
+                    begin
+                        
+                        bug = 0;
+                        state = S4;
+                    end
+                    else
+                    begin
+                         $display("Here!\n");
+                        bug = 1;
+                        state = S1;
+                    end
+                end
+            S2:
+                begin
+                    if (in == in2)
+                    begin
+                        
+                        bug = 0; 
+                        state = S5;                      
+                    end
+                    else if (in == in0)
+                    begin
+                        
+                        bug = 0;
+                        state = S1;
+                    end
+                    else
+                    begin
+                         $display("Here!\n");
+                        bug = 1;
+                        state = S2;
+                    end
+                end
+            S3:
                 begin
                     if (in == in0)
-                        begin
-                            state <= S5;
-                            $display("iii%d", state);
-                           // re_out <= 0;
-                            
-                        end
-                        else if (in == in2)
-                        begin
-                            state <= S0;
-                            $display("%d", state);
-                           // re_out <= 1;
-                        end
-                        else
-                        begin
-                        state <= S5;
-                        $display ("The state is %d and the input is %d, this is not a valid input.\n", state, in);//bugs
-                        end
+                    begin
+                        
+                        bug = 0;   
+                        state = S2;                    
+                    end
+                    else if (in == in2)
+                    begin
+                        
+                        bug = 0;
+                        state = S4;
+                    end
+                    else
+                    begin
+                         $display("Here!\n");
+                        bug = 1;
+                        state = S3;
+                    end
                 end
-       
+            S4:
+                begin
+                    if (in == in2)
+                    begin
+                        
+                        bug = 0;   
+                        state = S3;                    
+                    end
+                    else if (in == in1)
+                    begin
+                       
+                        bug = 0;
+                        state = S5;
+                    end
+                    else
+                    begin
+                         $display("Here!\n");
+                        bug = 1;
+                        state = S4;
+                    end
+                end
+            S5:
+                begin
+                    if (in == in0)
+                    begin
+                        
+                        bug = 0;   
+                        state = S5;                    
+                    end
+                    else if (in == in2)
+                    begin
+                        
+                        bug = 0;
+                        state = S0;
+                    end
+                    else
+                    begin
+                         $display("Here!\n");
+                        bug = 1;
+                        state = S5;
+                    end
+                end
+
+        endcase
+    end
+        
 end
 
 always@(state or in)
 begin
-    if(state == S0)
+    if(reset == 1)
+        state = S0;
+    else
     begin
-            if (in == in3)               
-                re_out <= 0;
-                
-          
-            else if (in == in0)
-          
-               
-                re_out <= 1;
-           
-            else
-            re_out <= 0;//bugs
-            
-    end
-    
-    else if(state == S1)
-        begin
-                if (in == in1)               
-                    re_out<= 0;
-                    
-              
-                else if (in == in2)
-              
-                   
-                    re_out <= 1;
-               
-                else
-                re_out <= 0;//bugs
-                
-        end
-        
-    else if(state == S2)
-            begin
-                    if (in == in2)               
-                        re_out <= 0;
-                        
-                  
-                    else if (in == in0)
-                  
-                       
-                        re_out <= 1;
-                   
-                    else
-                    re_out <= 0;//bugs
-                    
-            end
-            
-    else if(state == S3)
+        case(state)
+            S0:
                 begin
-                        if (in == in2)               
-                            re_out <= 1;
-                            
-                      
-                        else if (in == in0)
-                      
-                           
-                            re_out <= 0;
-                       
-                        else
-                        re_out <= 0;//bugs
-                        
-                end
-                
-    else if(state == S4)
+                    if (in == in3)
                     begin
-                            if (in == in1)               
-                                re_out <= 1;
-                                
-                          
-                            else if (in == in2)
-                          
-                               
-                                re_out <= 0;
-                           
-                            else
-                            re_out <= 0;//bugs
-                            
+                        out = 0;
+                      
                     end
-                    
-    else if(state == S5)
-                begin
-                        if (in == in2)               
-                            re_out <= 1;
-                            
-                      
-                        else if (in == in0)
-                      
-                           
-                            re_out <= 0;
-                       
-                        else
-                        re_out <= 0;//bugs
-                        
+                    else if (in == in0)
+                    begin
+                        out = 1;
+
+                    end
+                    else
+                    begin
+                        out = 0;
+
+                    end
                 end
-    //else bug
-                
+            S1:
+                begin
+                    if (in == in1)
+                    begin
+                        out = 0;
+                     
+                    end
+                    else if (in == in2)
+                    begin
+                        out = 1;
+          
+                    end
+                    else
+                    begin
+                        out = 0;
+                   
+                    end
+                end
+            S2:
+                begin
+                    if (in == in2)
+                    begin
+                        out = 0;
+                                 
+                    end
+                    else if (in == in0)
+                    begin
+                        out = 1;
+                     
+                    end
+                    else
+                    begin
+                        out = 0;
+                     
+                    end
+                end
+            S3:
+                begin
+                    if (in == in0)
+                    begin
+                        out = 0;
+                                          
+                    end
+                    else if (in == in2)
+                    begin
+                        out = 1;
+                      
+                    end
+                    else
+                    begin
+                        out = 0;
+                    
+                    end
+                end
+            S4:
+                begin
+                    if (in == in2)
+                    begin
+                        out = 0;
+                                       
+                    end
+                    else if (in == in1)
+                    begin
+                        out = 1;
+                   
+                    end
+                    else
+                    begin
+                        out = 0;
+                  
+                    end
+                end
+            S5:
+                begin
+                    if (in == in0)
+                    begin
+                        out = 0;
+                                        
+                    end
+                    else if (in == in2)
+                    begin
+                        out = 1;
+                   
+                    end
+                    else
+                    begin
+                        out = 0;
+                   
+                    end
+                end
+
+        endcase
+    end
         
 end
 
