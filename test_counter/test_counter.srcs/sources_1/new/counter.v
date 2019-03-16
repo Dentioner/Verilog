@@ -65,7 +65,7 @@ end
 */
 
 
-always @(posedge clk or posedge state ) 
+always @(posedge clk) 
 begin
 	if (state == `STATE_RESET) 
 	begin
