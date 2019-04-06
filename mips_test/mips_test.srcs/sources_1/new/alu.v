@@ -1,33 +1,11 @@
-`timescale 1ns / 1ps
-//////////////////////////////////////////////////////////////////////////////////
-// Company: 
-// Engineer: 
-// 
-// Create Date: 2019/03/22 14:04:50
-// Design Name: 
-// Module Name: alu
-// Project Name: 
-// Target Devices: 
-// Tool Versions: 
-// Description: 
-// 
-// Dependencies: 
-// 
-// Revision:
-// Revision 0.01 - File Created
-// Additional Comments:
-// 
-//////////////////////////////////////////////////////////////////////////////////
-
-
-
+`timescale 10 ns / 1 ns
 
 `define DATA_WIDTH 32
 
 module alu(
 	input [`DATA_WIDTH - 1:0] A,
 	input [`DATA_WIDTH - 1:0] B,
-	input [2:0] ALUop,
+	input [3:0] ALUop,
 	output Overflow,
 	output CarryOut,
 	output Zero,
@@ -35,12 +13,12 @@ module alu(
 );
 
 	// TODO: Please add your logic code here
-	localparam AND = 3'b000;
-	localparam OR  = 3'b001;
-	localparam ADD = 3'b010;
-	localparam SUB = 3'b110;
-	localparam SLT = 3'b111;
-
+	localparam AND = 4'b0000;
+	localparam OR  = 4'b0001;
+	localparam ADD = 4'b0010;
+	localparam SUB = 4'b0110;
+	localparam SLT = 4'b0111;
+//	localparam NOR = 4'b1100;
 
 
 	wire [`DATA_WIDTH - 1:0] CarryIn;
@@ -155,3 +133,4 @@ and a2(t_cout2, cin, t_result);
 or o1(cout, t_cout1, t_cout2);
 
 endmodule
+
