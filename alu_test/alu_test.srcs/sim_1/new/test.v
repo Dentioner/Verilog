@@ -49,12 +49,12 @@ module alu_test
 	always #10 clk = ~clk;//!!!!!!!!!!!!!!
 	always @(posedge clk) //!!!!!!!!!!!!!!
 	begin
-		A = {$random};
-		B = {$random};
-		ALUop = {$random}%8;
-		//A = 32'h80000000;
-		//B = 32'h00000001;
-		//ALUop = 3'b110;
+		//A = {$random};
+		//B = {$random};
+		//ALUop = {$random}%8;
+		A = 32'h00000000;
+		B = 32'h00000001;
+		ALUop = 3'b111;
 
 	end
 
