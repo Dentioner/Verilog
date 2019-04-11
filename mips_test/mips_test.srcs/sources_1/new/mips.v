@@ -1,5 +1,33 @@
 `timescale 10ns / 1ns
 
+`define ADD 4'b0010
+`define SUB 4'b0110
+`define AND 4'b0000
+`define OR  4'b0001
+`define SLT 4'b0111
+
+`define sll_funct  6'b000000
+`define srl_funct  6'b000010
+`define sra_funct  6'b000011
+`define sllv_funct 6'b000100
+`define srlv_funct 6'b000110
+`define srav_funct 6'b000111
+`define jr_funct   6'b001000
+`define jalr_funct 6'b001001
+`define movz_funct 6'b001010
+`define movn_funct 6'b001011
+
+`define addu_funct 6'b100001
+`define subu_funct 6'b100011
+`define and_funct  6'b100100
+`define or_funct   6'b100101
+`define xor_funct  6'b100110
+`define nor_funct  6'b100111
+`define slt_funt   6'b101010
+
+
+
+
 module mips_cpu(
 	input  rst,
 	input  clk,
@@ -39,11 +67,32 @@ module mips_cpu(
 	localparam addiu_out  = 9'b010100000;
 	localparam bne_out    = 9'b000000101;//9'bx0x000101;
 
-	localparam ADD = 4'b0010;
+/*	localparam ADD = 4'b0010;
 	localparam SUB = 4'b0110;
 	localparam AND = 4'b0000;
 	localparam OR  = 4'b0001;
 	localparam SLT = 4'b0111;
+
+	localparam sll_funct  = 6'b000000;
+	localparam srl_funct  = 6'b000010;
+	localparam sra_funct  = 6'b000011;
+	localparam sllv_funct = 6'b000100;
+	localparam srlv_funct = 6'b000110;
+	localparam srav_funct = 6'b000111;
+	localparam jr_funct	  = 6'b001000;
+	localparam jalr_funct = 6'b001001;
+	localparam movz_funct = 6'b001010;
+	localparam movn_funct = 6'b001011;
+
+	localparam addu_funct = 6'b100001;
+	localparam subu_funct = 6'b100011;
+	localparam and_funct  = 6'b100100;
+	localparam or_funct   = 6'b100101;
+	localparam xor_funct  = 6'b100110;
+	localparam nor_funct  = 6'b100111;
+	localparam slt_funt   = 6'b101010;
+*/
+
 
 	wire [8:0] control_data;
 	wire RegDst;
@@ -84,6 +133,15 @@ module mips_cpu(
 	wire Branch_after_AND;//这个信号是在branch和zero信号经过与门之后操作数据选择器的信号
 	wire [31:0] add_result;//左上角加法器的结果
 	wire [31:0] PC_input;//给PC输入的
+
+//下面这两个线是给instruction最低的11位命名
+	wire [5:0] funct;
+	wire [4:0] shamt;
+ 
+
+	assign funct = Instruction[5:0];
+	assign shamt = Instruction[10:6];
+
 
 	//下面这堆assign是书上样例的“控制”模块
 	assign control_data =   (Instruction[31:26] == R_type_in)?R_type_out:(
@@ -147,10 +205,10 @@ end
 
 
 
-	ALU_controller act1(.funct(Instruction[5:0]), .ALUop_raw(ALUop_raw), .ALUop(ALUop));//书上样例的“ALU控制”模块
+	ALU_controller act1(.funct(funct), .ALUop_raw(ALUop_raw), .ALUop(ALUop));//书上样例的“ALU控制”模块
 
 	alu alu1(.A(alu1_a), .B(alu1_b), .ALUop(ALUop), .Zero(Zero_raw),  .Result(alu1_result), .Overflow(alu1_overflow), .CarryOut(alu1_carryout));//overflow 和 carryout的信号暂时没引出
-	alu alu2(.A(alu2_a), .B(alu2_b), .ALUop(ADD),   .Zero(alu2_zero), .Result(alu2_result), .Overflow(alu2_overflow), .CarryOut(alu2_carryout));//Zero, overflow 和 carryout的信号暂时没引出, 此alu一直当做加法器使用
+	alu alu2(.A(alu2_a), .B(alu2_b), .ALUop(`ADD),   .Zero(alu2_zero), .Result(alu2_result), .Overflow(alu2_overflow), .CarryOut(alu2_carryout));//Zero, overflow 和 carryout的信号暂时没引出, 此alu一直当做加法器使用
 	//上面两个alu，第一个是样例图里面右下方的alu，第二个是样例图右上方的alu
 
 	reg_file r1(.clk(clk), .rst(rst), .waddr(RF_waddr), .raddr1(RF_raddr1), .raddr2(RF_raddr2), .wen(RF_wen), .wdata(RF_wdata), .rdata1(RF_rdata1), .rdata2(RF_rdata2));
@@ -164,21 +222,21 @@ module ALU_controller(
 	input [1:0]	ALUop_raw,
 	output [3:0] ALUop
 );
-	localparam ADD = 4'b0010;
-	localparam SUB = 4'b0110;
-	localparam AND = 4'b0000;
-	localparam OR  = 4'b0001;
+	//localparam ADD = 4'b0010;
+	//localparam SUB = 4'b0110;
+	//localparam AND = 4'b0000;
+	//localparam OR  = 4'b0001;
 
-	localparam SLT = 4'b0111;
+	//localparam SLT = 4'b0111;
 
-	assign ALUop = (ALUop_raw == 2'b00)?ADD:(
-					(ALUop_raw[0] == 1'b1)?SUB:(
+	assign ALUop = (ALUop_raw == 2'b00)?`ADD:(
+					(ALUop_raw[0] == 1'b1)?`SUB:(
 					(ALUop_raw[1] == 1'b1)?(
-					(funct[3:0] == 4'b0000)?ADD:(
-					(funct[3:0] == 4'b0010)?SUB:(
-					(funct[3:0] == 4'b0100)?AND:(
-					(funct[3:0] == 4'b0101)?OR :(
-					(funct[3:0] == 4'b1010)?SLT:4'b1111))))):4'b1111));
+					(funct[3:0] == 4'b0000)?`ADD:(
+					(funct[3:0] == 4'b0010)?`SUB:(
+					(funct[3:0] == 4'b0100)?`AND:(
+					(funct[3:0] == 4'b0101)?`OR :(
+					(funct[3:0] == 4'b1010)?`SLT:4'b1111))))):4'b1111));
 
 endmodule
 
