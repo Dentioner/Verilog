@@ -91,7 +91,7 @@ module mips_cpu(
 							(Instruction[31:26] == sw_in)    ?sw_out    :(
 							(Instruction[31:26] == beq_in)   ?beq_out   :(
 							(Instruction[31:26] == addiu_in) ?addiu_out :(
-							(Instruction[31:26] == bne_in)   ?bne_out   :9'bzzzzzzzzz)))));
+							(Instruction[31:26] == bne_in)   ?bne_out   :9'b000000000)))));
 
 	assign RegDst    = control_data[8];
 	assign ALUsrc    = control_data[7];
@@ -167,7 +167,7 @@ module ALU_controller(
 	localparam ADD = 4'b0010;
 	localparam SUB = 4'b0110;
 	localparam AND = 4'b0000;
-	localparam OR  = 4'b0001;;
+	localparam OR  = 4'b0001;
 
 	localparam SLT = 4'b0111;
 
@@ -178,7 +178,7 @@ module ALU_controller(
 					(funct[3:0] == 4'b0010)?SUB:(
 					(funct[3:0] == 4'b0100)?AND:(
 					(funct[3:0] == 4'b0101)?OR :(
-					(funct[3:0] == 4'b1010)?SLT:4'bzzzz))))):4'bzzzz));
+					(funct[3:0] == 4'b1010)?SLT:4'b1111))))):4'b1111));
 
 endmodule
 

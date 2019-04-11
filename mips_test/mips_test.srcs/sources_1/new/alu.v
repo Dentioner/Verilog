@@ -42,7 +42,7 @@ module alu(
 						((ALUop == OR)?2'b01:
 						((ALUop == ADD)?2'b10:
 						((ALUop == SUB)?2'b10:
-						((ALUop == SLT)?2'b11:2'bzz))));
+						((ALUop == SLT)?2'b11:2'b00))));
 	assign set = before_set[31];
 
 
