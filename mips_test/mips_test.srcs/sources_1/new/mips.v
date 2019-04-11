@@ -106,6 +106,9 @@ module mips_cpu(
 	wire [3:0] ALUop;
 //以上是“控制”模块使用的wire
 
+	wire [31:0] alu1_a_raw;
+	wire [31:0] alu1_b_raw;
+
 	wire [31:0] alu1_a;
 	wire [31:0] alu1_b;
 	wire [31:0] alu2_a;
@@ -167,8 +170,8 @@ module mips_cpu(
 	assign RF_wen = RegWrite;
 
 //下面这堆assign是两个alu使用的
-	assign alu1_a = RF_rdata1;
-	assign alu1_b = (ALUsrc == 1)?symbol_extension:RF_rdata2;//此为寄存器堆右边的数据选择器
+	assign alu1_a_raw = RF_rdata1;//这里进行一个移位操作
+	assign alu1_b_raw = (ALUsrc == 1)?symbol_extension:RF_rdata2;//此为寄存器堆右边的数据选择器
 	assign alu2_a = add_result;
 	assign alu2_b = symbol_extension<<2;//符号扩展信号左移2位
 
@@ -193,6 +196,8 @@ module mips_cpu(
 	assign Write_strb = 4'b1111;//阶段1保持全1即可
 
 
+
+
 //下面是程序计数器PC的赋值流程
 always @(posedge clk or posedge rst) 
 begin
@@ -206,6 +211,8 @@ end
 
 
 	ALU_controller act1(.funct(funct), .ALUop_raw(ALUop_raw), .ALUop(ALUop));//书上样例的“ALU控制”模块
+	shifter s1(.funct(funct), .shamt(shamt), .alu_a_raw(alu1_a_raw), .alu_b_raw(alu1_b_raw), .alu_a(alu1_a), .alu_b(alu1_b));//最下面新增的移位模块
+
 
 	alu alu1(.A(alu1_a), .B(alu1_b), .ALUop(ALUop), .Zero(Zero_raw),  .Result(alu1_result), .Overflow(alu1_overflow), .CarryOut(alu1_carryout));//overflow 和 carryout的信号暂时没引出
 	alu alu2(.A(alu2_a), .B(alu2_b), .ALUop(`ADD),   .Zero(alu2_zero), .Result(alu2_result), .Overflow(alu2_overflow), .CarryOut(alu2_carryout));//Zero, overflow 和 carryout的信号暂时没引出, 此alu一直当做加法器使用
@@ -240,3 +247,51 @@ module ALU_controller(
 
 endmodule
 
+
+module shifter(
+	input [5:0] funct,
+	input [4:0] shamt,
+	input [31:0] alu_a_raw,
+	input [31:0] alu_b_raw,
+	output [31:0] alu_a,
+	output [31:0] alu_b
+);
+	//wire [31:0] shift_number;
+
+	wire [31:0] sll_answer;
+	wire [31:0] srl_answer;
+	wire [31:0] sra_answer;
+	wire [31:0] sllv_answer;
+	wire [31:0] srlv_answer;
+	wire [31:0] srav_answer;
+
+	assign alu_a = (funct == `sll_funct ||
+					funct == `srl_funct ||
+					funct == `sra_funct ||
+					funct == `sllv_funct ||
+					funct == `srlv_funct ||
+					funct == `srav_funct)?32'b0:alu_a_raw;//如果是这6种功能的话，alu的a端口不输入加数
+
+	assign sll_answer  = alu_b_raw << shamt;
+	assign srl_answer  = alu_b_raw >> shamt;
+	//assign sra_answer  = {{shamt{alu_b_raw[31]}}, alu_b_raw[31:32-shamt]};
+	assign sra_answer = (alu_b_raw[31])?(~((~alu_b_raw) >> shamt)):srl_answer;//取反逻辑右移之后再取反就行了
+	assign sllv_answer = alu_b_raw << alu_a_raw;
+	assign srlv_answer = alu_b_raw >> alu_a_raw;
+	//assign srav_answer = {{alu_a_raw{alu_b_raw[31]}}, alu_b_raw[31:32 - alu_a_raw]};
+	assign srav_answer = (alu_b_raw[31])?(~((~alu_b_raw) >> alu_a_raw)):srlv_answer;
+
+
+
+
+
+	assign alu_b =  (funct == `sll_funct)?  sll_answer:(
+					(funct == `srl_funct)?  srl_answer:(
+					(funct == `sra_funct)?  sra_answer:(
+					(funct == `sllv_funct)?sllv_answer:(
+					(funct == `srlv_funct)?srlv_answer:(
+					(funct == `srav_funct)?srav_answer:alu_b_raw)))));
+
+	
+
+endmodule
