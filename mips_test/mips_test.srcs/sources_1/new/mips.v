@@ -25,6 +25,19 @@
 `define nor_funct  6'b100111
 `define slt_funt   6'b101010
 
+`define R_type_in  6'b000000
+`define lw_in      6'b100011
+`define sw_in      6'b101011
+`define beq_in     6'b000100
+`define addiu_in   6'b001001
+`define bne_in     6'b000101
+
+`define R_type_out  9'b100100010
+`define lw_out      9'b011110000
+`define sw_out      9'b010001000//9'bx1x001000;
+`define beq_out     9'b000000101//9'bx0x000101;
+`define addiu_out   9'b010100000
+`define bne_out     9'b000000101//9'bx0x000101;
 
 
 
@@ -53,6 +66,7 @@ module mips_cpu(
 	wire [31:0]		RF_wdata;
 
 	// TODO: PLEASE ADD YOUT CODE BELOW
+/*	
 	localparam R_type_in = 6'b000000;
 	localparam lw_in     = 6'b100011;
 	localparam sw_in     = 6'b101011;
@@ -67,7 +81,7 @@ module mips_cpu(
 	localparam addiu_out  = 9'b010100000;
 	localparam bne_out    = 9'b000000101;//9'bx0x000101;
 
-/*	localparam ADD = 4'b0010;
+	localparam ADD = 4'b0010;
 	localparam SUB = 4'b0110;
 	localparam AND = 4'b0000;
 	localparam OR  = 4'b0001;
@@ -147,12 +161,12 @@ module mips_cpu(
 
 
 	//下面这堆assign是书上样例的“控制”模块
-	assign control_data =   (Instruction[31:26] == R_type_in)?R_type_out:(
-							(Instruction[31:26] == lw_in)    ?lw_out    :(
-							(Instruction[31:26] == sw_in)    ?sw_out    :(
-							(Instruction[31:26] == beq_in)   ?beq_out   :(
-							(Instruction[31:26] == addiu_in) ?addiu_out :(
-							(Instruction[31:26] == bne_in)   ?bne_out   :9'b000000000)))));
+	assign control_data =   (Instruction[31:26] == `R_type_in)?`R_type_out:(
+							(Instruction[31:26] == `lw_in)    ?`lw_out    :(
+							(Instruction[31:26] == `sw_in)    ?`sw_out    :(
+							(Instruction[31:26] == `beq_in)   ?`beq_out   :(
+							(Instruction[31:26] == `addiu_in) ?`addiu_out :(
+							(Instruction[31:26] == `bne_in)   ?`bne_out   :9'b000000000)))));
 
 	assign RegDst    = control_data[8];
 	assign ALUsrc    = control_data[7];
@@ -181,7 +195,7 @@ module mips_cpu(
 
 //下面这堆assign是给右上角的数据选择器用的
 	assign Branch_after_AND = Branch & Zero_input_to_alu2;
-	assign Zero_input_to_alu2 = (Instruction[31:26] == bne_in)?~Zero_raw:Zero_raw;//Zero_raw对于bne需要处理一下
+	assign Zero_input_to_alu2 = (Instruction[31:26] == `bne_in)?~Zero_raw:Zero_raw;//Zero_raw对于bne需要处理一下
 	assign PC_input = (Branch_after_AND == 1)?alu2_result:add_result;
 
 //下面这个是样例图左边的加法器
@@ -211,7 +225,7 @@ end
 
 
 	ALU_controller act1(.funct(funct), .ALUop_raw(ALUop_raw), .ALUop(ALUop));//书上样例的“ALU控制”模块
-	shifter s1(.funct(funct), .shamt(shamt), .alu_a_raw(alu1_a_raw), .alu_b_raw(alu1_b_raw), .alu_a(alu1_a), .alu_b(alu1_b));//最下面新增的移位模块
+	shifter s1(.funct(funct), .shamt(shamt), .alu_a_raw(alu1_a_raw), .alu_b_raw(alu1_b_raw), .typecode(Instruction[31:26]), .alu_a(alu1_a), .alu_b(alu1_b));//最下面新增的移位模块
 
 
 	alu alu1(.A(alu1_a), .B(alu1_b), .ALUop(ALUop), .Zero(Zero_raw),  .Result(alu1_result), .Overflow(alu1_overflow), .CarryOut(alu1_carryout));//overflow 和 carryout的信号暂时没引出
@@ -253,6 +267,7 @@ module shifter(
 	input [4:0] shamt,
 	input [31:0] alu_a_raw,
 	input [31:0] alu_b_raw,
+	input [5:0] typecode,
 	output [31:0] alu_a,
 	output [31:0] alu_b
 );
@@ -265,12 +280,15 @@ module shifter(
 	wire [31:0] srlv_answer;
 	wire [31:0] srav_answer;
 
-	assign alu_a = (funct == `sll_funct ||
+	assign alu_a = (typecode == `R_type_in)?(
+				   (funct == `sll_funct ||
 					funct == `srl_funct ||
 					funct == `sra_funct ||
 					funct == `sllv_funct ||
 					funct == `srlv_funct ||
-					funct == `srav_funct)?32'b0:alu_a_raw;//如果是这6种功能的话，alu的a端口不输入加数
+					funct == `srav_funct)?32'b0:alu_a_raw):alu_a_raw;//如果是Rtype的这6种功能的话，alu的a端口不输入加数
+
+					
 
 	assign sll_answer  = alu_b_raw << shamt;
 	assign srl_answer  = alu_b_raw >> shamt;
@@ -285,12 +303,15 @@ module shifter(
 
 
 
-	assign alu_b =  (funct == `sll_funct)?  sll_answer:(
+	assign alu_b = (typecode == `R_type_in)?(
+				    (funct == `sll_funct)?  sll_answer:(
 					(funct == `srl_funct)?  srl_answer:(
 					(funct == `sra_funct)?  sra_answer:(
 					(funct == `sllv_funct)?sllv_answer:(
 					(funct == `srlv_funct)?srlv_answer:(
-					(funct == `srav_funct)?srav_answer:alu_b_raw)))));
+					(funct == `srav_funct)?srav_answer:alu_b_raw)))))):alu_b_raw; 
+
+	
 
 	
 
