@@ -6,6 +6,13 @@
 `define OR  4'b0001
 `define SLT 4'b0111
 
+`define and_aluop_raw    3'b000
+`define or_aluop_raw     3'b001
+`define add_aluop_raw    3'b010
+`define R_type_aluop_raw 3'b100
+`define sub_aluop_raw	 3'b110
+`define slt_aluop_raw	 3'b111
+
 `define sll_funct  6'b000000
 `define srl_funct  6'b000010
 `define sra_funct  6'b000011
@@ -23,21 +30,30 @@
 `define or_funct   6'b100101
 `define xor_funct  6'b100110
 `define nor_funct  6'b100111
-`define slt_funt   6'b101010
+`define slt_funct  6'b101010
 
 `define R_type_in  6'b000000
+`define j_in	   6'b000010
+`define jal_in     6'b000011
+`define beq_in     6'b000100
+`define bne_in     6'b000101
+`define addiu_in   6'b001001
+`define slti_in	   6'b001010
+`define lui_in	   6'b001111
 `define lw_in      6'b100011
 `define sw_in      6'b101011
-`define beq_in     6'b000100
-`define addiu_in   6'b001001
-`define bne_in     6'b000101
 
-`define R_type_out  9'b100100010
-`define lw_out      9'b011110000
-`define sw_out      9'b010001000//9'bx1x001000;
-`define beq_out     9'b000000101//9'bx0x000101;
-`define addiu_out   9'b010100000
-`define bne_out     9'b000000101//9'bx0x000101;
+`define j_out		11'b00000000000
+`define jal_out		11'b00001000000
+`define beq_out     11'b10000001110//9'bx0x000101;
+`define bne_out     11'b10000001110//9'bx0x000101;
+`define sw_out      11'b10100010000//9'bx1x001000;
+`define addiu_out   11'b10101000000
+`define lui_out		11'b10101000000
+`define slti_out	11'b10101000111
+`define lw_out      11'b10111100000
+`define R_type_out  11'b11001000100
+
 
 
 
@@ -66,49 +82,10 @@ module mips_cpu(
 	wire [31:0]		RF_wdata;
 
 	// TODO: PLEASE ADD YOUT CODE BELOW
-/*	
-	localparam R_type_in = 6'b000000;
-	localparam lw_in     = 6'b100011;
-	localparam sw_in     = 6'b101011;
-	localparam beq_in    = 6'b000100;
-	localparam addiu_in  = 6'b001001;
-	localparam bne_in    = 6'b000101;
-
-	localparam R_type_out = 9'b100100010;
-	localparam lw_out     = 9'b011110000;
-	localparam sw_out     = 9'b010001000;//9'bx1x001000;
-	localparam beq_out    = 9'b000000101;//9'bx0x000101;
-	localparam addiu_out  = 9'b010100000;
-	localparam bne_out    = 9'b000000101;//9'bx0x000101;
-
-	localparam ADD = 4'b0010;
-	localparam SUB = 4'b0110;
-	localparam AND = 4'b0000;
-	localparam OR  = 4'b0001;
-	localparam SLT = 4'b0111;
-
-	localparam sll_funct  = 6'b000000;
-	localparam srl_funct  = 6'b000010;
-	localparam sra_funct  = 6'b000011;
-	localparam sllv_funct = 6'b000100;
-	localparam srlv_funct = 6'b000110;
-	localparam srav_funct = 6'b000111;
-	localparam jr_funct	  = 6'b001000;
-	localparam jalr_funct = 6'b001001;
-	localparam movz_funct = 6'b001010;
-	localparam movn_funct = 6'b001011;
-
-	localparam addu_funct = 6'b100001;
-	localparam subu_funct = 6'b100011;
-	localparam and_funct  = 6'b100100;
-	localparam or_funct   = 6'b100101;
-	localparam xor_funct  = 6'b100110;
-	localparam nor_funct  = 6'b100111;
-	localparam slt_funt   = 6'b101010;
-*/
 
 
 	wire [8:0] control_data;
+	wire DonotJump;
 	wire RegDst;
 	wire ALUsrc;
 	wire MemtoReg;
@@ -116,7 +93,7 @@ module mips_cpu(
 //  wire MemRead has already been defined
 //  wire MemWrite has already been defined
 	wire Branch;
-	wire [1:0] ALUop_raw;
+	wire [2:0] ALUop_raw;
 	wire [3:0] ALUop;
 //以上是“控制”模块使用的wire
 
@@ -149,12 +126,17 @@ module mips_cpu(
 	wire [31:0] symbol_extension;//符号扩展单元使用
 	wire Branch_after_AND;//这个信号是在branch和zero信号经过与门之后操作数据选择器的信号
 	wire [31:0] add_result;//左上角加法器的结果
-	wire [31:0] PC_input;//给PC输入的
+	wire [31:0] PC_input_before_jump;
+	wire [31:0] PC_input_after_jump;//给PC输入的
+
+
 
 //下面这两个线是给instruction最低的11位命名
 	wire [5:0] funct;
 	wire [4:0] shamt;
  
+	wire [31:0] jump_address;//jmp类指令使用
+
 
 	assign funct = Instruction[5:0];
 	assign shamt = Instruction[10:6];
@@ -166,21 +148,28 @@ module mips_cpu(
 							(Instruction[31:26] == `sw_in)    ?`sw_out    :(
 							(Instruction[31:26] == `beq_in)   ?`beq_out   :(
 							(Instruction[31:26] == `addiu_in) ?`addiu_out :(
-							(Instruction[31:26] == `bne_in)   ?`bne_out   :9'b000000000)))));
+							(Instruction[31:26] == `bne_in)   ?`bne_out   :(
+							(Instruction[31:26] == `j_in)	  ?`j_out	  :11'b1000000000))))));
 
-	assign RegDst    = control_data[8];
-	assign ALUsrc    = control_data[7];
-	assign MemtoReg  = control_data[6];
-	assign RegWrite  = control_data[5];
-	assign MemRead   = control_data[4];
-	assign MemWrite  = control_data[3];
-	assign Branch    = control_data[2];
-	assign ALUop_raw = control_data[1:0];
+	assign DonotJump = control_data[10];
+	assign RegDst    = control_data[9];
+	assign ALUsrc    = control_data[8];
+	assign MemtoReg  = control_data[7];
+	assign RegWrite  = control_data[6];
+	assign MemRead   = control_data[5];
+	assign MemWrite  = control_data[4];
+	assign Branch    = control_data[3];
+	assign ALUop_raw = control_data[2:0];
 
 //下面这堆assign是寄存器堆使用的
 	assign RF_raddr1 = Instruction[25:21];
 	assign RF_raddr2 = Instruction[20:16];//这个raddr2可能还要改，因为样例图里面好像有Instruction20~16不进人raddr2的
-	assign RF_waddr = (RegDst == 1)?Instruction[15:11]:Instruction[20:16];//此为样例图寄存器堆左边的数据选择器
+	
+
+	assign RF_waddr = (Instruction[31:26] == `jal_in)?31:(
+						(RegDst == 1)?Instruction[15:11]:Instruction[20:16]);//此为样例图寄存器堆左边的数据选择器
+	
+
 	assign RF_wen = RegWrite;
 
 //下面这堆assign是两个alu使用的
@@ -191,25 +180,31 @@ module mips_cpu(
 
 
 //下面这堆assign是样例图寄存器下面的“符号扩展”模块
-	assign symbol_extension = {{16{Instruction[15]}}, Instruction[15:0]};//可能需要修改，因为可能Instruction不进入这个模块
+	assign symbol_extension = (Instruction[31:26] == `lui_in)?{Instruction[15:0], 16'b0}:
+							{{16{Instruction[15]}}, Instruction[15:0]};//如果是lui指令则做左移，否则符号拓展
 
 //下面这堆assign是给右上角的数据选择器用的
 	assign Branch_after_AND = Branch & Zero_input_to_alu2;
 	assign Zero_input_to_alu2 = (Instruction[31:26] == `bne_in)?~Zero_raw:Zero_raw;//Zero_raw对于bne需要处理一下
-	assign PC_input = (Branch_after_AND == 1)?alu2_result:add_result;
+	assign PC_input_before_jump = (Branch_after_AND == 1)?alu2_result:add_result;
 
 //下面这个是样例图左边的加法器
 	assign add_result = PC + 4;
 
 //下面这个是样例图最右边主存旁边的数据选择器
-	assign RF_wdata = (MemtoReg == 1)?Read_data:alu1_result;
+	assign RF_wdata = (Instruction[31:26] == `jal_in)?(PC+8):(
+						(MemtoReg == 1)?Read_data:alu1_result);//先判断是否是直接将PC+8塞进去的指令，然后再判断别的
 
 //下面是样例图右边主存的一堆输出信号
 	assign Address = alu1_result;
 	assign Write_data = RF_rdata2;
 	assign Write_strb = 4'b1111;//阶段1保持全1即可
 
+	assign jump_address = {add_result[31:28], Instruction[25:0], 2'b00};//jmp的地址拼接
 
+	assign PC_input_after_jump =(DonotJump)?(
+								(funct == `jr_funct)?alu1_result:PC_input_before_jump
+								):jump_address;//这个地方实现多个信号选择，jump=1表示不用j类地址，而funct为jr时直接使用alu1的结果
 
 
 //下面是程序计数器PC的赋值流程
@@ -218,7 +213,7 @@ begin
 	if (rst) 
 		PC <= 32'b0;// reset	
 	else 
-		PC <= PC_input;
+		PC <= PC_input_after_jump;
 end
 
 
@@ -240,7 +235,7 @@ endmodule
 
 module ALU_controller(
 	input [5:0] funct,
-	input [1:0]	ALUop_raw,
+	input [2:0]	ALUop_raw,
 	output [3:0] ALUop
 );
 	//localparam ADD = 4'b0010;
@@ -250,14 +245,18 @@ module ALU_controller(
 
 	//localparam SLT = 4'b0111;
 
-	assign ALUop = (ALUop_raw == 2'b00)?`ADD:(
-					(ALUop_raw[0] == 1'b1)?`SUB:(
-					(ALUop_raw[1] == 1'b1)?(
-					(funct[3:0] == 4'b0000)?`ADD:(
+	assign ALUop = (ALUop_raw == `add_aluop_raw)?`ADD:(
+					(ALUop_raw == `sub_aluop_raw)?`SUB:(
+					(ALUop_raw == `and_aluop_raw)?`AND:(
+					(ALUop_raw == `slt_aluop_raw)?`SLT:(
+					(ALUop_raw == `or_aluop_raw)?`OR:(
+					(ALUop_raw == `R_type_aluop_raw)?(
+						
+					(funct == `sll_funct || funct == `addu_funct || funct == `jr_funct)?`ADD:(
 					(funct[3:0] == 4'b0010)?`SUB:(
 					(funct[3:0] == 4'b0100)?`AND:(
-					(funct[3:0] == 4'b0101)?`OR :(
-					(funct[3:0] == 4'b1010)?`SLT:4'b1111))))):4'b1111));
+					(funct == `or_funct)?`OR :(
+					(funct == `slt_funct)?`SLT:4'b1111))))):4'b1111)))));
 
 endmodule
 
