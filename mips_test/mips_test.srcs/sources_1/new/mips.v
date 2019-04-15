@@ -37,29 +37,41 @@
 `define slt_funct  6'b101010
 
 `define R_type_in  6'b000000
+`define bgez_in    6'b000001
+`define bltz_in	   6'b000001
 `define j_in	   6'b000010
 `define jal_in     6'b000011
 `define beq_in     6'b000100
 `define bne_in     6'b000101
+`define blez_in    6'b000110
 `define addiu_in   6'b001001
 `define slti_in	   6'b001010
 `define sltiu_in   6'b001011
+`define andi_in	   6'b001100
 `define lui_in	   6'b001111
+`define lb_in	   6'b100000
 `define lw_in      6'b100011
 `define sw_in      6'b101011
+
+`define regimm_bltz 5'b00000
+`define regimm_bgez 5'b00001
 
 `define j_out		11'b00000000010
 `define jal_out		11'b00001000010
 `define beq_out     11'b10000001110//9'bx0x000101;
 `define bne_out     11'b10000001110//9'bx0x000101;
+`define bgez_out	11'b10000001110
+`define blez_out	11'b10000001110
+`define bltz_out	11'b10000001110
 `define sw_out      11'b10100010010//9'bx1x001000;
+`define andi_out	11'b10101000000
 `define addiu_out   11'b10101000010
 `define lui_out		11'b10101000010
 `define slti_out	11'b10101000111
 `define sltiu_out	11'b10101000011
+`define lb_out		11'b10111100010
 `define lw_out      11'b10111100010
 `define R_type_out  11'b11001000100
-
 
 
 
@@ -143,6 +155,7 @@ module mips_cpu(
  
 	wire [31:0] jump_address;//jmp类指令使用
 
+	wire [31:0] Read_data_symbol_extension;//lb指令使用
 
 	assign funct = Instruction[5:0];
 	assign shamt = Instruction[10:6];
@@ -159,7 +172,10 @@ module mips_cpu(
 							(Instruction[31:26] == `lui_in)   ?`lui_out   :(
 							(Instruction[31:26] == `slti_in)  ?`slti_out  :(
 							(Instruction[31:26] == `sltiu_in) ?`sltiu_out :(
-							(Instruction[31:26] == `j_in)	  ?`j_out	  :11'b1000000000))))))))));
+							(Instruction[31:26] == `andi_in)  ?`andi_out  :(
+							(Instruction[31:26] == `bgez_in)  ?`bgez_out  :(
+							(Instruction[31:26] == `blez_in)  ?`blez_out  :(
+							(Instruction[31:26] == `j_in)	  ?`j_out	  :11'b1000000000)))))))))))));
 
 	assign DonotJump = control_data[10];
 	assign RegDst    = control_data[9];
@@ -185,7 +201,7 @@ module mips_cpu(
 	//为了让仿真通过只好再把这个地方加点条件保证RF_wen不能在写地址为0的时候=1了。
 
 //下面这堆assign是两个alu使用的
-	assign alu1_a_raw = RF_rdata1;//这里进行一个移位操作
+	assign alu1_a_raw = (Instruction[31:26] == R_type_in && funct == `jalr_funct)?add_result:RF_rdata1;//这里如果发现指令是jalr，直接将PC+4塞到A输入端即可
 	assign alu1_b_raw = (ALUsrc == 1)?symbol_extension:RF_rdata2;//此为寄存器堆右边的数据选择器
 	assign alu2_a = add_result;
 	assign alu2_b = symbol_extension<<2;//符号扩展信号左移2位
@@ -198,7 +214,11 @@ module mips_cpu(
 
 //下面这堆assign是给右上角的数据选择器用的
 	assign Branch_after_AND = Branch & Zero_input_to_alu2;
-	assign Zero_input_to_alu2 = (Instruction[31:26] == `bne_in)?~Zero_raw:Zero_raw;//Zero_raw对于bne需要处理一下
+	assign Zero_input_to_alu2 = (Instruction[31:26] == `bne_in)?~Zero_raw:(//Zero_raw对于bne需要处理一下
+								(Instruction[31:26] == `bgez_in && Instruction[20:16] == `regimm_bgez)?~RF_rdata1[31]:(
+								(Instruction[31:26] == `bltz_in && Instruction[20:16] == `regimm_bltz)?RF_rdata1[31]:(
+								(Instruction[31:26] == `blez_in)?(RF_rdata1[31]|Zero_raw):
+									Zero_raw)));
 	assign PC_input_before_jump = (Branch_after_AND == 1)?alu2_result:add_result;
 
 //下面这个是样例图左边的加法器
@@ -206,7 +226,11 @@ module mips_cpu(
 
 //下面这个是样例图最右边主存旁边的数据选择器
 	assign RF_wdata = (Instruction[31:26] == `jal_in)?(PC+8):(
-						(MemtoReg == 1)?Read_data:alu1_result);//先判断是否是直接将PC+8塞进去的指令，然后再判断别的
+						(MemtoReg == 1)?(
+						(Instruction[31:26] == `lb_in)?Read_data_symbol_extension:Read_data)
+						:alu1_result);//先判断是否是直接将PC+8塞进去的指令，然后再判断别的
+
+	assign Read_data_symbol_extension = {{24{Read_data[7]}}, Read_data[7:0]};//将8位Read_data符号扩展
 
 //下面是样例图右边主存的一堆输出信号
 	assign Address = alu1_result;
@@ -216,8 +240,9 @@ module mips_cpu(
 	assign jump_address = {add_result[31:28], Instruction[25:0], 2'b00};//jmp的地址拼接
 
 	assign PC_input_after_jump =(DonotJump)?(
-								(funct == `jr_funct && Instruction[31:26] == `R_type_in)?alu1_result:PC_input_before_jump
-								):jump_address;//这个地方实现多个信号选择，jump=1表示不用j类地址，而funct为jr时直接使用alu1的结果
+								(funct == `jr_funct && Instruction[31:26] == `R_type_in)?alu1_result:(
+								(funct == `jalr_funct && Instruction[31:26] == `R_type_in)?RF_rdata1:PC_input_before_jump
+								)):jump_address;//这个地方实现多个信号选择，jump=1表示不用j类地址，而funct为jr时直接使用alu1的结果
 
 
 //下面是程序计数器PC的赋值流程
@@ -266,9 +291,9 @@ module ALU_controller(
 					(ALUop_raw == `sltu_aluop_raw)?`SLTU:(
 					(ALUop_raw == `R_type_aluop_raw)?(
 						
-					(funct == `sll_funct || funct == `addu_funct || funct == `jr_funct)?`ADD:(
+					(funct == `sll_funct || funct == `addu_funct || funct == `jr_funct || funct == `jalr_funct)?`ADD:(
 					(funct[3:0] == 4'b0010)?`SUB:(
-					(funct[3:0] == 4'b0100)?`AND:(
+					(funct == `and_funct)?`AND:(
 					(funct == `or_funct)?`OR :(
 					(funct == `slt_funct)?`SLT:4'b1111))))):4'b1111))))));
 
