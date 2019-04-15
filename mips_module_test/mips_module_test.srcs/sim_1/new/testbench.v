@@ -35,6 +35,7 @@ module testbench();
 	wire [31:0] alu_b;
 	wire [7:0] answer;
 	reg clk;
+	localparam justtest = 32'b1;
 initial
 begin
 	shamt = 5'b0;

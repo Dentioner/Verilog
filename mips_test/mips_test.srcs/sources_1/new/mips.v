@@ -1,17 +1,21 @@
 `timescale 10ns / 1ns
 
-`define ADD 4'b0010
-`define SUB 4'b0110
-`define AND 4'b0000
-`define OR  4'b0001
-`define SLT 4'b0111
+`define ADD  4'b0010
+`define SUB  4'b0110
+`define AND  4'b0000
+`define OR   4'b0001
+`define SLT  4'b0111
+`define SLTU 4'b0011//无符号数的比较
 
 `define and_aluop_raw    3'b000
 `define or_aluop_raw     3'b001
 `define add_aluop_raw    3'b010
+`define sltu_aluop_raw	 3'b011
 `define R_type_aluop_raw 3'b100
 `define sub_aluop_raw	 3'b110
 `define slt_aluop_raw	 3'b111
+
+
 
 `define sll_funct  6'b000000
 `define srl_funct  6'b000010
@@ -39,19 +43,21 @@
 `define bne_in     6'b000101
 `define addiu_in   6'b001001
 `define slti_in	   6'b001010
+`define sltiu_in   6'b001011
 `define lui_in	   6'b001111
 `define lw_in      6'b100011
 `define sw_in      6'b101011
 
-`define j_out		11'b00000000000
-`define jal_out		11'b00001000000
+`define j_out		11'b00000000010
+`define jal_out		11'b00001000010
 `define beq_out     11'b10000001110//9'bx0x000101;
 `define bne_out     11'b10000001110//9'bx0x000101;
-`define sw_out      11'b10100010000//9'bx1x001000;
-`define addiu_out   11'b10101000000
-`define lui_out		11'b10101000000
+`define sw_out      11'b10100010010//9'bx1x001000;
+`define addiu_out   11'b10101000010
+`define lui_out		11'b10101000010
 `define slti_out	11'b10101000111
-`define lw_out      11'b10111100000
+`define sltiu_out	11'b10101000011
+`define lw_out      11'b10111100010
 `define R_type_out  11'b11001000100
 
 
@@ -84,7 +90,7 @@ module mips_cpu(
 	// TODO: PLEASE ADD YOUT CODE BELOW
 
 
-	wire [8:0] control_data;
+	wire [10:0] control_data;
 	wire DonotJump;
 	wire RegDst;
 	wire ALUsrc;
@@ -149,7 +155,11 @@ module mips_cpu(
 							(Instruction[31:26] == `beq_in)   ?`beq_out   :(
 							(Instruction[31:26] == `addiu_in) ?`addiu_out :(
 							(Instruction[31:26] == `bne_in)   ?`bne_out   :(
-							(Instruction[31:26] == `j_in)	  ?`j_out	  :11'b1000000000))))));
+							(Instruction[31:26] == `jal_in)   ?`jal_out   :(
+							(Instruction[31:26] == `lui_in)   ?`lui_out   :(
+							(Instruction[31:26] == `slti_in)  ?`slti_out  :(
+							(Instruction[31:26] == `sltiu_in) ?`sltiu_out :(
+							(Instruction[31:26] == `j_in)	  ?`j_out	  :11'b1000000000))))))))));
 
 	assign DonotJump = control_data[10];
 	assign RegDst    = control_data[9];
@@ -170,7 +180,9 @@ module mips_cpu(
 						(RegDst == 1)?Instruction[15:11]:Instruction[20:16]);//此为样例图寄存器堆左边的数据选择器
 	
 
-	assign RF_wen = RegWrite;
+	assign RF_wen = (RF_waddr == 32'b0)?1'b0:RegWrite;//好像仿真的时候认为写地址为0的时候是不能写的，
+	//但是实际上在regfile模块里面都保证了写地址为0的时候不接受外来信号
+	//为了让仿真通过只好再把这个地方加点条件保证RF_wen不能在写地址为0的时候=1了。
 
 //下面这堆assign是两个alu使用的
 	assign alu1_a_raw = RF_rdata1;//这里进行一个移位操作
@@ -180,8 +192,9 @@ module mips_cpu(
 
 
 //下面这堆assign是样例图寄存器下面的“符号扩展”模块
-	assign symbol_extension = (Instruction[31:26] == `lui_in)?{Instruction[15:0], 16'b0}:
-							{{16{Instruction[15]}}, Instruction[15:0]};//如果是lui指令则做左移，否则符号拓展
+	assign symbol_extension = (Instruction[31:26] == `lui_in)?{Instruction[15:0], 16'b0}:(
+							  (Instruction[31:26] == `sltiu_in)?{16'b0, Instruction[15:0]}:
+							{{16{Instruction[15]}}, Instruction[15:0]});//如果是lui指令则做左移，否则符号拓展
 
 //下面这堆assign是给右上角的数据选择器用的
 	assign Branch_after_AND = Branch & Zero_input_to_alu2;
@@ -203,7 +216,7 @@ module mips_cpu(
 	assign jump_address = {add_result[31:28], Instruction[25:0], 2'b00};//jmp的地址拼接
 
 	assign PC_input_after_jump =(DonotJump)?(
-								(funct == `jr_funct)?alu1_result:PC_input_before_jump
+								(funct == `jr_funct && Instruction[31:26] == `R_type_in)?alu1_result:PC_input_before_jump
 								):jump_address;//这个地方实现多个信号选择，jump=1表示不用j类地址，而funct为jr时直接使用alu1的结果
 
 
@@ -223,8 +236,8 @@ end
 	shifter s1(.funct(funct), .shamt(shamt), .alu_a_raw(alu1_a_raw), .alu_b_raw(alu1_b_raw), .typecode(Instruction[31:26]), .alu_a(alu1_a), .alu_b(alu1_b));//最下面新增的移位模块
 
 
-	alu alu1(.A(alu1_a), .B(alu1_b), .ALUop(ALUop), .Zero(Zero_raw),  .Result(alu1_result), .Overflow(alu1_overflow), .CarryOut(alu1_carryout));//overflow 和 carryout的信号暂时没引出
-	alu alu2(.A(alu2_a), .B(alu2_b), .ALUop(`ADD),   .Zero(alu2_zero), .Result(alu2_result), .Overflow(alu2_overflow), .CarryOut(alu2_carryout));//Zero, overflow 和 carryout的信号暂时没引出, 此alu一直当做加法器使用
+	alu alu1(.A_raw(alu1_a), .B_raw(alu1_b), .ALUop(ALUop), .Zero(Zero_raw),  .Result(alu1_result), .Overflow(alu1_overflow), .CarryOut(alu1_carryout));//overflow 和 carryout的信号暂时没引出
+	alu alu2(.A_raw(alu2_a), .B_raw(alu2_b), .ALUop(`ADD),   .Zero(alu2_zero), .Result(alu2_result), .Overflow(alu2_overflow), .CarryOut(alu2_carryout));//Zero, overflow 和 carryout的信号暂时没引出, 此alu一直当做加法器使用
 	//上面两个alu，第一个是样例图里面右下方的alu，第二个是样例图右上方的alu
 
 	reg_file r1(.clk(clk), .rst(rst), .waddr(RF_waddr), .raddr1(RF_raddr1), .raddr2(RF_raddr2), .wen(RF_wen), .wdata(RF_wdata), .rdata1(RF_rdata1), .rdata2(RF_rdata2));
@@ -250,13 +263,14 @@ module ALU_controller(
 					(ALUop_raw == `and_aluop_raw)?`AND:(
 					(ALUop_raw == `slt_aluop_raw)?`SLT:(
 					(ALUop_raw == `or_aluop_raw)?`OR:(
+					(ALUop_raw == `sltu_aluop_raw)?`SLTU:(
 					(ALUop_raw == `R_type_aluop_raw)?(
 						
 					(funct == `sll_funct || funct == `addu_funct || funct == `jr_funct)?`ADD:(
 					(funct[3:0] == 4'b0010)?`SUB:(
 					(funct[3:0] == 4'b0100)?`AND:(
 					(funct == `or_funct)?`OR :(
-					(funct == `slt_funct)?`SLT:4'b1111))))):4'b1111)))));
+					(funct == `slt_funct)?`SLT:4'b1111))))):4'b1111))))));
 
 endmodule
 
