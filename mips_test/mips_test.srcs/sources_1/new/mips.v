@@ -253,7 +253,7 @@ module mips_cpu(
 	//为了让仿真通过只好再把这个地方加点条件保证RF_wen不能在写地址为0的时候=1了。
 
 //下面这堆assign是两个alu使用的
-	assign alu1_a_raw = (Instruction[31:26] == R_type_in && funct == `jalr_funct)?add_result:RF_rdata1;//这里如果发现指令是jalr，直接将PC+4塞到A输入端即可
+	assign alu1_a_raw = (Instruction[31:26] == `R_type_in && funct == `jalr_funct)?(add_result + 4):RF_rdata1;//这里如果发现指令是jalr，直接将PC+4塞到A输入端即可
 	assign alu1_b_raw = (ALUsrc == 1)?symbol_extension:(
 						(Instruction[31:26] == `R_type_in && funct == `movn_funct)?32'b0://如果ALUSrc=0，说明操作数b不是16位那边过来的，这时候再判断是不是在执行movn指令，
 						RF_rdata2);//如果是movn，则将操作数b变成0，否则照常输入RF_data2
@@ -286,8 +286,16 @@ module mips_cpu(
 	assign RF_wdata = (Instruction[31:26] == `jal_in)?(PC+8):(
 						(MemtoReg == 1)?(
 						(Instruction[31:26] == `lb_in || Instruction[31:26] == `lh_in)?Read_data_symbol_extension:(
-						(Instruction[31:26] == `lbu_in || Instruction[31:26] == `lhu_in)?Read_data_logical_extension:Read_data))
-						:alu1_result);//先判断是否是直接将PC+8塞进去的指令，然后再判断别的
+						(Instruction[31:26] == `lbu_in || Instruction[31:26] == `lhu_in)?Read_data_logical_extension:(
+						(Instruction[31:26] == `lwl_in)?(
+							(vAddr10 == 2'b00)?{Read_data[7:0], RF_rdata2[23:0]}:(
+							(vAddr10 == 2'b01)?{Read_data[15:0], RF_rdata2[15:0]}:(
+							(vAddr10 == 2'b10)?{Read_data[23:0], RF_rdata2[7:0]}:Read_data))):(
+						(Instruction[31:26] == `lwr_in)?(
+							(vAddr10 == 2'b00)?Read_data:(
+							(vAddr10 == 2'b01)?{RF_rdata2[31:24], Read_data[31:8]}:(
+							(vAddr10 == 2'b10)?{RF_rdata2[31:16], Read_data[31:16]}:{RF_rdata2[31:8], Read_data[31:24]}))):Read_data))
+						)):alu1_result);//先判断是否是直接将PC+8塞进去的指令，然后再判断别的
 
 	assign Read_data_symbol_extension = (Instruction[31:26] == `lb_in)?
 										{{24{Read_data[7]}}, Read_data[7:0]}:(
@@ -324,7 +332,16 @@ module mips_cpu(
 					  Instruction[31:26] == `swr_in)?Address_align:Address_raw;
 
 
-	assign Write_data = RF_rdata2;
+	assign Write_data = (Instruction[31:26] == `swl_in)?(
+							(vAddr10 == 2'b00)?{24'b0, RF_rdata2[31:24]}:(
+							(vAddr10 == 2'b01)?{16'b0, RF_rdata2[31:16]}:(
+							(vAddr10 == 2'b10)?{8'b0,  RF_rdata2[31:8]}:RF_rdata2))):(
+						(Instruction[31:26] == `swr_in)?(
+							(vAddr10 == 2'b00)?RF_rdata2:(
+							(vAddr10 == 2'b01)?{RF_rdata2[23:0], 8'b0}:(
+							(vAddr10 == 2'b10)?{RF_rdata2[15:0], 16'b0}:{RF_rdata2[7:0], 24'b0}))):RF_rdata2);
+
+
 	assign Write_strb = (Instruction[31:26] == `sb_in)?4'b0001:(
 						(Instruction[31:26] == `sh_in)?4'b0011:(
 						(Instruction[31:26] == `swl_in)?(
@@ -365,7 +382,7 @@ end
 	alu alu2(.A_raw(alu2_a), .B_raw(alu2_b), .ALUop(`ADD),   .Zero(alu2_zero), .Result(alu2_result), .Overflow(alu2_overflow), .CarryOut(alu2_carryout));//Zero, overflow 和 carryout的信号暂时没引出, 此alu一直当做加法器使用
 	//上面两个alu，第一个是样例图里面右下方的alu，第二个是样例图右上方的alu
 
-	reg_file r1(.clk(clk), .rst(rst), .waddr(RF_waddr), .raddr1(RF_raddr1), .raddr2(RF_raddr2), .wen(RF_wen), .wdata(RF_wdata), .rdata1(RF_rdata1), .rdata2(RF_rdata2), .Write_strb(Write_strb_for_reg_file));
+	reg_file r1(.clk(clk), .rst(rst), .waddr(RF_waddr), .raddr1(RF_raddr1), .raddr2(RF_raddr2), .wen(RF_wen), .wdata(RF_wdata), .rdata1(RF_rdata1), .rdata2(RF_rdata2));    //, .Write_strb(Write_strb_for_reg_file));
 	//此为样例图里面的寄存器堆
 
 endmodule
@@ -447,10 +464,10 @@ module shifter(
 	assign srl_answer  = alu_b_raw >> shamt;
 	//assign sra_answer  = {{shamt{alu_b_raw[31]}}, alu_b_raw[31:32-shamt]};
 	assign sra_answer = (alu_b_raw[31])?(~((~alu_b_raw) >> shamt)):srl_answer;//取反逻辑右移之后再取反就行了
-	assign sllv_answer = alu_b_raw << alu_a_raw;
-	assign srlv_answer = alu_b_raw >> alu_a_raw;
+	assign sllv_answer = alu_b_raw << alu_a_raw[4:0];
+	assign srlv_answer = alu_b_raw >> alu_a_raw[4:0];
 	//assign srav_answer = {{alu_a_raw{alu_b_raw[31]}}, alu_b_raw[31:32 - alu_a_raw]};
-	assign srav_answer = (alu_b_raw[31])?(~((~alu_b_raw) >> alu_a_raw)):srlv_answer;
+	assign srav_answer = (alu_b_raw[31])?(~((~alu_b_raw) >> alu_a_raw[4:0])):srlv_answer;
 
 
 

@@ -12,8 +12,8 @@ module reg_file(
 	input wen,
 	input [`DATA_WIDTH - 1:0] wdata,
 	output [`DATA_WIDTH - 1:0] rdata1,
-	output [`DATA_WIDTH - 1:0] rdata2,
-	input [3:0] Write_strb 
+	output [`DATA_WIDTH - 1:0] rdata2//,
+	//input [3:0] Write_strb 
 );
 
 	// TODO: Please add your logic code here
@@ -72,17 +72,7 @@ module reg_file(
 		end
 		else if (wen && waddr != `ADDR_WIDTH'b0) 
 		begin
-			case(Write_strb)
-				4'b0000: register_file[waddr]			<= register_file[waddr];
-				4'b0001: register_file[waddr][7:0]		<= wdata[31:24];
-				4'b0011: register_file[waddr][15:0]		<= wdata[31:16];
-				4'b0111: register_file[waddr][23:0]		<= wdata[31:8];
-				//上：lwr，下：lwl
-				4'b1000: register_file[waddr][31:24]	<= wdata[7:0];
-				4'b1100: register_file[waddr][31:16]	<= wdata[15:0];
-				4'b1110: register_file[waddr][31:8]		<= wdata[23:0];
-				default: register_file[waddr]			<= wdata; //4'b1111
-			endcase
+			register_file[waddr] <= wdata;
 		end
 	end
 
