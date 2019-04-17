@@ -19,7 +19,7 @@ module alu(
 	localparam SUB  = 4'b0110;
 	localparam SLT  = 4'b0111;
 	localparam SLTU = 4'b0011;//无符号数的比较
-//	localparam NOR = 4'b1100;
+	localparam NOR  = 4'b1100;
 
 
 	wire [`DATA_WIDTH - 1:0] CarryIn;
@@ -44,7 +44,7 @@ module alu(
 	assign Binvert = ((ALUop == SUB)||(ALUop == SLT)||(ALUop == SLTU))?1:0;
 	assign CarryIn[0] = ((ALUop == SUB)||(ALUop == SLT)||(ALUop == SLTU))?1:0;
 	assign Operation = (ALUop == AND)?2'b00:
-						((ALUop == OR)?2'b01:
+						((ALUop == OR || ALUop == NOR)?2'b01:
 						((ALUop == ADD)?2'b10:
 						((ALUop == SUB)?2'b10:
 						((ALUop == SLTU)?2'b11:
@@ -60,7 +60,9 @@ module alu(
 		(Result_raw == 32'b1)?Result_raw:(	//如果是，那么当前的Result_raw是1吗？如果是，说明操作数A的高位比B小，也就是A<B
 		(Zero == 1'b0)?32'b0:(				//如果Result_raw=0，则说明高位的比较结果是A≥B，还要看Zero位。如果Zero为0，说明A的高31位大于B，则A>B
 		(A_raw[0]<B_raw[0])?32'b1:32'b0 	//如果Zero=1，说明A_raw与B_raw的高31位完全一样，则需要比较A_raw与B_raw的最低位了
-		))):Result_raw;						//如果当前操作不是无符号数操作比较，直接输出Result_raw即可
+		))):(								//如果当前操作不是无符号数操作比较，则执行其他指令的判断
+		(ALUop == NOR)?~Result_raw:			//如果当前操作是NOR，则将用OR实现的结果取个反即可
+		Result_raw);						
 
 
 

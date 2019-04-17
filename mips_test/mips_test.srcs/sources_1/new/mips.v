@@ -6,6 +6,7 @@
 `define OR   4'b0001
 `define SLT  4'b0111
 `define SLTU 4'b0011//无符号数的比较
+`define NOR  4'b1100
 
 `define and_aluop_raw    3'b000
 `define or_aluop_raw     3'b001
@@ -48,9 +49,15 @@
 `define slti_in	   6'b001010
 `define sltiu_in   6'b001011
 `define andi_in	   6'b001100
+`define ori_in	   6'b001101
 `define lui_in	   6'b001111
 `define lb_in	   6'b100000
+`define lh_in	   6'b100001
+`define lwl_in	   6'b100010
 `define lw_in      6'b100011
+`define lbu_in	   6'b100100
+`define lhu_in	   6'b100101
+`define lwr_in	   6'b100110
 `define sw_in      6'b101011
 
 `define regimm_bltz 5'b00000
@@ -70,7 +77,12 @@
 `define slti_out	11'b10101000111
 `define sltiu_out	11'b10101000011
 `define lb_out		11'b10111100010
+`define lh_out		11'b10111100010
+`define lwl_out		11'b10111100010
 `define lw_out      11'b10111100010
+`define lbu_out		11'b10111100010
+`define lhu_out		11'b10111100010
+`define lwr_out		11'b10111100010
 `define R_type_out  11'b11001000100
 
 
@@ -155,7 +167,15 @@ module mips_cpu(
  
 	wire [31:0] jump_address;//jmp类指令使用
 
-	wire [31:0] Read_data_symbol_extension;//lb指令使用
+	wire [31:0] Read_data_symbol_extension;//lb/lh指令使用
+	wire [31:0] Read_data_logical_extension;//lbu/lhu指令使用
+
+//下面的wire是给lwl/lwr用的
+	wire [3:0] Write_strb_for_reg_file;//lwl/lwr使用
+	wire [1:0] vAddr10;//lwl/lwr使用
+	wire [31:0] Address_raw;//lwl/lwr使用
+	wire [31:0] Address_align;
+
 
 	assign funct = Instruction[5:0];
 	assign shamt = Instruction[10:6];
@@ -175,7 +195,15 @@ module mips_cpu(
 							(Instruction[31:26] == `andi_in)  ?`andi_out  :(
 							(Instruction[31:26] == `bgez_in)  ?`bgez_out  :(
 							(Instruction[31:26] == `blez_in)  ?`blez_out  :(
-							(Instruction[31:26] == `j_in)	  ?`j_out	  :11'b1000000000)))))))))))));
+							(Instruction[31:26] == `bltz_in)  ?`bltz_out  :(
+							(Instruction[31:26] == `lb_in)    ?`lb_out    :(
+							(Instruction[31:26] == `lbu_in)   ?`lbu_out   :(
+							(Instruction[31:26] == `lh_in)    ?`lh_out    :(
+							(Instruction[31:26] == `lhu_in)   ?`lhu_out   :(
+							(Instruction[31:26] == `lwl_in)   ?`lwl_out   :(
+							(Instruction[31:26] == `lwr_in)   ?`lwr_out   :(
+
+							(Instruction[31:26] == `j_in)	  ?`j_out	  :11'b1000000000))))))))))))))))))));
 
 	assign DonotJump = control_data[10];
 	assign RegDst    = control_data[9];
@@ -196,13 +224,19 @@ module mips_cpu(
 						(RegDst == 1)?Instruction[15:11]:Instruction[20:16]);//此为样例图寄存器堆左边的数据选择器
 	
 
-	assign RF_wen = (RF_waddr == 32'b0)?1'b0:RegWrite;//好像仿真的时候认为写地址为0的时候是不能写的，
+	assign RF_wen = (RF_waddr == 32'b0)?1'b0:(
+					(Instruction[31:26] == `R_type_in && funct == `movn_funct && RF_rdata2 == 32'b0)?1'b0:(//如果执行的是movn指令，而且rt=0时，写使能低电平
+					(Instruction[31:26] == `R_type_in && funct == `movz_funct && RF_rdata2 != 32'b0)?1'b0://如果执行的是movz指令，而且rt≠0时，写使能低电平
+					RegWrite));//好像仿真的时候认为写地址为0的时候是不能写的，
 	//但是实际上在regfile模块里面都保证了写地址为0的时候不接受外来信号
 	//为了让仿真通过只好再把这个地方加点条件保证RF_wen不能在写地址为0的时候=1了。
 
 //下面这堆assign是两个alu使用的
 	assign alu1_a_raw = (Instruction[31:26] == R_type_in && funct == `jalr_funct)?add_result:RF_rdata1;//这里如果发现指令是jalr，直接将PC+4塞到A输入端即可
-	assign alu1_b_raw = (ALUsrc == 1)?symbol_extension:RF_rdata2;//此为寄存器堆右边的数据选择器
+	assign alu1_b_raw = (ALUsrc == 1)?symbol_extension:(
+						(Instruction[31:26] == `R_type_in && funct == `movn_funct)?32'b0://如果ALUSrc=0，说明操作数b不是16位那边过来的，这时候再判断是不是在执行movn指令，
+						RF_rdata2);//如果是movn，则将操作数b变成0，否则照常输入RF_data2
+						//此为寄存器堆右边的数据选择器
 	assign alu2_a = add_result;
 	assign alu2_b = symbol_extension<<2;//符号扩展信号左移2位
 
@@ -227,13 +261,42 @@ module mips_cpu(
 //下面这个是样例图最右边主存旁边的数据选择器
 	assign RF_wdata = (Instruction[31:26] == `jal_in)?(PC+8):(
 						(MemtoReg == 1)?(
-						(Instruction[31:26] == `lb_in)?Read_data_symbol_extension:Read_data)
+						(Instruction[31:26] == `lb_in || Instruction[31:26] == `lh_in)?Read_data_symbol_extension:(
+						(Instruction[31:26] == `lbu_in || Instruction[31:26] == `lhu_in)?Read_data_logical_extension:Read_data))
 						:alu1_result);//先判断是否是直接将PC+8塞进去的指令，然后再判断别的
 
-	assign Read_data_symbol_extension = {{24{Read_data[7]}}, Read_data[7:0]};//将8位Read_data符号扩展
+	assign Read_data_symbol_extension = (Instruction[31:26] == `lb_in)?
+										{{24{Read_data[7]}}, Read_data[7:0]}:(
+										(Instruction[31:26] == `lh_in)?
+										{{16{Read_data[15]}}, Read_data[15:0]}
+										:Read_data);//将8位/16位Read_data符号扩展
+										
+
+	assign Read_data_logical_extension = (Instruction[31:26] == `lbu_in)?
+										{24'b0, Read_data[7:0]}:(
+										(Instruction[31:26] == `lhu_in)?
+										{16'b0, Read_data[15:0]}
+										:Read_data);//将8位/16位Read_data高位加0拓展为32位
+
+
+	//下面几个assign是为了实现lwl/lwr而设置的
+	assign Write_strb_for_reg_file = (Instruction[31:26] == `lwl_in)?(
+										(vAddr10 == 2'b00)?4'b1000:(
+										(vAddr10 == 2'b01)?4'b1100:(
+										(vAddr10 == 2'b10)?4'b1110:4'b1111))):(
+									 (Instruction[31:26] == `lwr_in)?(
+									 	(vAddr10 == 2'b00)?4'b1111:(
+									 	(vAddr10 == 2'b01)?4'b0111:(
+									 	(vAddr10 == 2'b10)?4'b0011:4'b0001))):4'b1111);
+	assign vAddr10 = Address[1:0];
+
 
 //下面是样例图右边主存的一堆输出信号
-	assign Address = alu1_result;
+	assign Address_raw = alu1_result;
+	assign Address_align = Address_raw - vAddr10;
+	assign Address = (Instruction[31:26] == `lwl_in || Instruction[31:26] == `lwr_in)?Address_align:Address_raw;
+
+
 	assign Write_data = RF_rdata2;
 	assign Write_strb = 4'b1111;//阶段1保持全1即可
 
@@ -265,7 +328,7 @@ end
 	alu alu2(.A_raw(alu2_a), .B_raw(alu2_b), .ALUop(`ADD),   .Zero(alu2_zero), .Result(alu2_result), .Overflow(alu2_overflow), .CarryOut(alu2_carryout));//Zero, overflow 和 carryout的信号暂时没引出, 此alu一直当做加法器使用
 	//上面两个alu，第一个是样例图里面右下方的alu，第二个是样例图右上方的alu
 
-	reg_file r1(.clk(clk), .rst(rst), .waddr(RF_waddr), .raddr1(RF_raddr1), .raddr2(RF_raddr2), .wen(RF_wen), .wdata(RF_wdata), .rdata1(RF_rdata1), .rdata2(RF_rdata2));
+	reg_file r1(.clk(clk), .rst(rst), .waddr(RF_waddr), .raddr1(RF_raddr1), .raddr2(RF_raddr2), .wen(RF_wen), .wdata(RF_wdata), .rdata1(RF_rdata1), .rdata2(RF_rdata2), .Write_strb(Write_strb_for_reg_file));
 	//此为样例图里面的寄存器堆
 
 endmodule
@@ -291,11 +354,12 @@ module ALU_controller(
 					(ALUop_raw == `sltu_aluop_raw)?`SLTU:(
 					(ALUop_raw == `R_type_aluop_raw)?(
 						
-					(funct == `sll_funct || funct == `addu_funct || funct == `jr_funct || funct == `jalr_funct)?`ADD:(
+					(funct == `sll_funct || funct == `addu_funct || funct == `jr_funct || funct == `jalr_funct || funct == `movn_funct || funct == `movz_funct)?`ADD:(
 					(funct[3:0] == 4'b0010)?`SUB:(
 					(funct == `and_funct)?`AND:(
 					(funct == `or_funct)?`OR :(
-					(funct == `slt_funct)?`SLT:4'b1111))))):4'b1111))))));
+					(funct == `nor_funct)?`NOR:(
+					(funct == `slt_funct)?`SLT:4'b1111)))))):4'b1111))))));
 
 endmodule
 

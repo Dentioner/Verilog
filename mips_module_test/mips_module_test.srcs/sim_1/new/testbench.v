@@ -35,6 +35,9 @@ module testbench();
 	wire [31:0] alu_b;
 	wire [7:0] answer;
 	reg clk;
+	wire [1:0] test_signal;
+	reg [1:0] test_signal_r;
+
 	localparam justtest = 32'b1;
 initial
 begin
@@ -51,11 +54,23 @@ begin
 	#20 funct = `srav_funct;
 end
 
+assign test_signal = 3;
+
 always #5 clk = ~clk;
 always @(posedge clk) 
 	shamt = {$random}%5;
 
+always @*
+begin
+	
+	case(test_signal)
+	1: test_signal_r <= 1;
+	2: test_signal_r <= 2;
+	3: test_signal_r <= 3;
+	0: test_signal_r <= 0;
+	endcase
 
+end
 	shifter s1(funct, shamt, alu_a_raw, alu_b_raw, alu_a, alu_b);
 	//shifter_two s2(.shamt(shamt), .answer(answer));
 
