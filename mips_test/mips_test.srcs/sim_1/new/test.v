@@ -10,7 +10,7 @@ wire MemWrite;
 wire [31:0] Write_data;
 wire [3:0] Write_strb;
 reg [31:0] Read_data;
-wire MemRead;
+wire MemRead; 
 
 initial
 begin

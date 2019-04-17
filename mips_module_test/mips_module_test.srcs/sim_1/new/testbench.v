@@ -51,7 +51,7 @@ begin
 	#20 funct = `sllv_funct;
 	#20 funct = `sllv_funct;
 	#20 funct = `srlv_funct;
-	#20 funct = `srav_funct;
+	#20 funct = `srav_funct; 
 end
 
 assign test_signal = 3;

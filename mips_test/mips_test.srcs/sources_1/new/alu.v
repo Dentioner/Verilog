@@ -11,7 +11,7 @@ module alu(
 	output Zero,
 	output [`DATA_WIDTH - 1:0] Result
 );
-
+ 
 	// TODO: Please add your logic code here
 	localparam AND  = 4'b0000;
 	localparam OR   = 4'b0001;

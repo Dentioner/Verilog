@@ -13,7 +13,7 @@ module reg_file(
 	input [`DATA_WIDTH - 1:0] wdata,
 	output [`DATA_WIDTH - 1:0] rdata1,
 	output [`DATA_WIDTH - 1:0] rdata2,
-	input [3:0] Write_strb
+	input [3:0] Write_strb 
 );
 
 	// TODO: Please add your logic code here

@@ -51,7 +51,7 @@ module shifter(
 					funct == `srav_funct)?32'b0:alu_a_raw;//如果是这6种功能的话，alu的a端口不输入加数
 
 	assign sll_answer  = alu_b_raw << shamt;
-	assign srl_answer  = alu_b_raw >> shamt;
+	assign srl_answer  = alu_b_raw >> shamt; 
 	//assign sra_answer  = {{shamt{alu_b_raw[31]}}, alu_b_raw[31:32-shamt]};
 	assign sra_answer = (alu_b_raw[31])?(~((~alu_b_raw) >> shamt)):srl_answer;//取反逻辑右移之后再取反就行了
 	assign sllv_answer = alu_b_raw << alu_a_raw;

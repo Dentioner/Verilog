@@ -86,7 +86,7 @@
 `define R_type_out  11'b11001000100
 
 
-
+ 
 module mips_cpu(
 	input  rst,
 	input  clk,
