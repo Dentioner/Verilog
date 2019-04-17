@@ -1,12 +1,14 @@
 `timescale 10ns / 1ns
 
-`define ADD  4'b0010
-`define SUB  4'b0110
 `define AND  4'b0000
 `define OR   4'b0001
-`define SLT  4'b0111
+`define ADD  4'b0010
 `define SLTU 4'b0011//无符号数的比较
+`define SUB  4'b0110
+`define SLT  4'b0111
+`define XOR  4'b1000
 `define NOR  4'b1100
+
 
 `define and_aluop_raw    3'b000
 `define or_aluop_raw     3'b001
@@ -15,6 +17,7 @@
 `define R_type_aluop_raw 3'b100
 `define sub_aluop_raw	 3'b110
 `define slt_aluop_raw	 3'b111
+`define xor_aluop_raw	 3'b101
 
 
 
@@ -36,6 +39,7 @@
 `define xor_funct  6'b100110
 `define nor_funct  6'b100111
 `define slt_funct  6'b101010
+`define sltu_funct 6'b101011
 
 `define R_type_in  6'b000000
 `define bgez_in    6'b000001
@@ -50,6 +54,7 @@
 `define sltiu_in   6'b001011
 `define andi_in	   6'b001100
 `define ori_in	   6'b001101
+`define xori_in	   6'b001110
 `define lui_in	   6'b001111
 `define lb_in	   6'b100000
 `define lh_in	   6'b100001
@@ -58,7 +63,11 @@
 `define lbu_in	   6'b100100
 `define lhu_in	   6'b100101
 `define lwr_in	   6'b100110
+`define sb_in	   6'b101000
+`define sh_in	   6'b101001
+`define swl_in	   6'b101010
 `define sw_in      6'b101011
+`define swr_in	   6'b101110
 
 `define regimm_bltz 5'b00000
 `define regimm_bgez 5'b00001
@@ -70,10 +79,16 @@
 `define bgez_out	11'b10000001110
 `define blez_out	11'b10000001110
 `define bltz_out	11'b10000001110
+`define sb_out		11'b10100010010
+`define sh_out		11'b10100010010
+`define swl_out		11'b10100010010
 `define sw_out      11'b10100010010//9'bx1x001000;
+`define swr_out		11'b10100010010
 `define andi_out	11'b10101000000
+`define ori_out		11'b10101000001
 `define addiu_out   11'b10101000010
 `define lui_out		11'b10101000010
+`define xori_out	11'b10101000101
 `define slti_out	11'b10101000111
 `define sltiu_out	11'b10101000011
 `define lb_out		11'b10111100010
@@ -202,8 +217,14 @@ module mips_cpu(
 							(Instruction[31:26] == `lhu_in)   ?`lhu_out   :(
 							(Instruction[31:26] == `lwl_in)   ?`lwl_out   :(
 							(Instruction[31:26] == `lwr_in)   ?`lwr_out   :(
+							(Instruction[31:26] == `ori_in)	  ?`ori_out	  :(
+							(Instruction[31:26] == `sb_in)	  ?`sb_out	  :(
+							(Instruction[31:26] == `sh_in)	  ?`sh_out	  :(
+							(Instruction[31:26] == `swl_in)	  ?`swl_out	  :(
+							(Instruction[31:26] == `swr_in)	  ?`swr_out   :(
+							(Instruction[31:26] == `xori_in)  ?`xori_out  :(
 
-							(Instruction[31:26] == `j_in)	  ?`j_out	  :11'b1000000000))))))))))))))))))));
+							(Instruction[31:26] == `j_in)	  ?`j_out	  :11'b1000000000))))))))))))))))))))))))));
 
 	assign DonotJump = control_data[10];
 	assign RegDst    = control_data[9];
@@ -243,7 +264,10 @@ module mips_cpu(
 
 //下面这堆assign是样例图寄存器下面的“符号扩展”模块
 	assign symbol_extension = (Instruction[31:26] == `lui_in)?{Instruction[15:0], 16'b0}:(
-							  (Instruction[31:26] == `sltiu_in)?{16'b0, Instruction[15:0]}:
+							  (Instruction[31:26] == `sltiu_in || 
+							  	Instruction[31:26] == `andi_in ||
+							  	Instruction[31:26] == `xori_in || 
+							  	Instruction[31:26] == `ori_in)?{16'b0, Instruction[15:0]}:
 							{{16{Instruction[15]}}, Instruction[15:0]});//如果是lui指令则做左移，否则符号拓展
 
 //下面这堆assign是给右上角的数据选择器用的
@@ -288,17 +312,30 @@ module mips_cpu(
 									 	(vAddr10 == 2'b00)?4'b1111:(
 									 	(vAddr10 == 2'b01)?4'b0111:(
 									 	(vAddr10 == 2'b10)?4'b0011:4'b0001))):4'b1111);
-	assign vAddr10 = Address[1:0];
+	assign vAddr10 = Address_raw[1:0];
 
 
 //下面是样例图右边主存的一堆输出信号
 	assign Address_raw = alu1_result;
 	assign Address_align = Address_raw - vAddr10;
-	assign Address = (Instruction[31:26] == `lwl_in || Instruction[31:26] == `lwr_in)?Address_align:Address_raw;
+	assign Address = (Instruction[31:26] == `lwl_in || 
+					  Instruction[31:26] == `lwr_in ||
+					  Instruction[31:26] == `swl_in ||
+					  Instruction[31:26] == `swr_in)?Address_align:Address_raw;
 
 
 	assign Write_data = RF_rdata2;
-	assign Write_strb = 4'b1111;//阶段1保持全1即可
+	assign Write_strb = (Instruction[31:26] == `sb_in)?4'b0001:(
+						(Instruction[31:26] == `sh_in)?4'b0011:(
+						(Instruction[31:26] == `swl_in)?(
+							(vAddr10 == 2'b00)?4'b0001:(
+							(vAddr10 == 2'b01)?4'b0011:(
+							(vAddr10 == 2'b10)?4'b0111:4'b1111))):(
+						(Instruction[31:26] == `swr_in)?(
+							(vAddr10 == 2'b00)?4'b1111:(
+							(vAddr10 == 2'b01)?4'b1110:(
+							(vAddr10 == 2'b10)?4'b1100:4'b1000))):4'b1111)));//阶段1保持全1即可
+
 
 	assign jump_address = {add_result[31:28], Instruction[25:0], 2'b00};//jmp的地址拼接
 
@@ -352,14 +389,28 @@ module ALU_controller(
 					(ALUop_raw == `slt_aluop_raw)?`SLT:(
 					(ALUop_raw == `or_aluop_raw)?`OR:(
 					(ALUop_raw == `sltu_aluop_raw)?`SLTU:(
+					(ALUop_raw == `xor_aluop_raw)?`XOR:(
 					(ALUop_raw == `R_type_aluop_raw)?(
 						
-					(funct == `sll_funct || funct == `addu_funct || funct == `jr_funct || funct == `jalr_funct || funct == `movn_funct || funct == `movz_funct)?`ADD:(
-					(funct[3:0] == 4'b0010)?`SUB:(
+					(funct == `sll_funct  || 
+					 funct == `addu_funct || 
+					 funct == `jr_funct   || 
+					 funct == `jalr_funct || 
+					 funct == `movn_funct ||
+				 	 funct == `srl_funct  ||
+				 	 funct == `sllv_funct ||
+					 funct == `sra_funct  ||
+					 funct == `srav_funct ||
+					 funct == `srlv_funct ||
+					 funct == `movz_funct)?`ADD:(
+					//(funct[3:0] == 4'b0010)?`SUB:(
+					(funct == `subu_funct)?`SUB:(
 					(funct == `and_funct)?`AND:(
 					(funct == `or_funct)?`OR :(
 					(funct == `nor_funct)?`NOR:(
-					(funct == `slt_funct)?`SLT:4'b1111)))))):4'b1111))))));
+					(funct == `xor_funct)?`XOR:(
+					(funct == `sltu_funct)?`SLTU:(
+					(funct == `slt_funct)?`SLT:4'b1111)))))))):4'b1111)))))));
 
 endmodule
 

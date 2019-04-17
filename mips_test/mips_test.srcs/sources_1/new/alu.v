@@ -20,6 +20,13 @@ module alu(
 	localparam SLT  = 4'b0111;
 	localparam SLTU = 4'b0011;//无符号数的比较
 	localparam NOR  = 4'b1100;
+	localparam XOR  = 4'b1000;
+
+	localparam and_alu_element = 3'b000;
+	localparam or_alu_element  = 3'b001;
+	localparam add_alu_element = 3'b010;
+	localparam slt_alu_element = 3'b011;
+	localparam xor_alu_element = 3'b101;
 
 
 	wire [`DATA_WIDTH - 1:0] CarryIn;
@@ -27,7 +34,7 @@ module alu(
 	wire set;//NOT define
 	wire less0;
 	wire Binvert;
-	wire [1:0]Operation;
+	wire [2:0]Operation;
 	wire [`DATA_WIDTH-1 : 0]before_set;
 	wire tmp_CarryOut;
 
@@ -43,12 +50,13 @@ module alu(
 	assign less0 = Overflow ^ set;
 	assign Binvert = ((ALUop == SUB)||(ALUop == SLT)||(ALUop == SLTU))?1:0;
 	assign CarryIn[0] = ((ALUop == SUB)||(ALUop == SLT)||(ALUop == SLTU))?1:0;
-	assign Operation = (ALUop == AND)?2'b00:
-						((ALUop == OR || ALUop == NOR)?2'b01:
-						((ALUop == ADD)?2'b10:
-						((ALUop == SUB)?2'b10:
-						((ALUop == SLTU)?2'b11:
-						((ALUop == SLT)?2'b11:2'b00)))));
+	assign Operation = (ALUop == AND)?and_alu_element:(
+						(ALUop == OR || ALUop == NOR)?or_alu_element:(
+						(ALUop == ADD)?add_alu_element:(
+						(ALUop == SUB)?add_alu_element:(
+						(ALUop == SLTU)?slt_alu_element:(
+						(ALUop == XOR)?xor_alu_element:(
+						(ALUop == SLT)?slt_alu_element:and_alu_element))))));
 
 	assign set = before_set[31];
 
@@ -114,25 +122,32 @@ module ALU_element(
 	input carryin,
 	input less,
 	input binvert,
-	input [1:0]operation,
+	input [2:0]operation,
 	output result,
 	output carryout,
 	output set
 ); 
-	wire a1, b1, sum_result, and_result, or_result;
+	wire a1, b1, sum_result, and_result, or_result, xor_result;
+
+	localparam and_alu_element = 3'b000;
+	localparam or_alu_element  = 3'b001;
+	localparam add_alu_element = 3'b010;
+	localparam slt_alu_element = 3'b011;
+	localparam xor_alu_element = 3'b101;
 
 	assign a1 = a;
 	assign b1 = (binvert)?~b:b;
 	assign and_result = a1&b1;
 	assign or_result  = a1|b1;
-
+	assign xor_result = a1^b1;
 
 	fulladder f0(a1, b1, sum_result, carryin, carryout);
 
-	assign  result = (operation == 2'b00)? and_result:
-					((operation == 2'b01)? or_result :
-					((operation == 2'b10)?sum_result :  less   //SLT here
-						));
+	assign  result = (operation == and_alu_element)? and_result:
+					((operation == or_alu_element)? or_result :
+					((operation == add_alu_element)?sum_result :
+					((operation == xor_alu_element)?xor_result : less   //SLT here
+						)));
 
 	assign set = sum_result;
 endmodule
