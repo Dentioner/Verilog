@@ -107,7 +107,7 @@ module mips_cpu(
 	input  clk,
 
 	output reg [31:0] PC,
-	(*mark_debug = "true"*) input  [31:0] Instruction,
+	input  [31:0] Instruction,
 
 	output [31:0] Address,
 	output MemWrite,
@@ -130,7 +130,7 @@ module mips_cpu(
 
 
 	wire [10:0] control_data;
-	(*mark_debug = "true"*) wire DonotJump;
+	wire DonotJump;
 	wire RegDst;
 	wire ALUsrc;
 	wire MemtoReg;
@@ -142,37 +142,37 @@ module mips_cpu(
 	wire [3:0] ALUop;
 //以上是“控制”模块使用的wire
 
-	(*mark_debug = "true"*) wire [31:0] alu1_a_raw;
+	wire [31:0] alu1_a_raw;
 	wire [31:0] alu1_b_raw;
 
 	wire [31:0] alu1_a;
 	wire [31:0] alu1_b;
 	wire [31:0] alu2_a;
 	wire [31:0] alu2_b;
-	(*mark_debug = "true"*) wire Zero_raw;//原始的Zero信号
-	(*mark_debug = "true"*) wire Zero_input_to_alu2;//Zero_raw信号需要经过处理才能变成正式的信号输送给第二个alu，也就是为了区分bne和beq两种指令而设置的
+	wire Zero_raw;//原始的Zero信号
+	wire Zero_input_to_alu2;//Zero_raw信号需要经过处理才能变成正式的信号输送给第二个alu，也就是为了区分bne和beq两种指令而设置的
 	wire [31:0] alu1_result;
 	wire [31:0] alu2_result;
 //以上是两个alu的有用的wire
 	wire alu1_overflow;
-	wire alu2_overflow;
+	
 	wire alu1_carryout;
-	wire alu2_carryout;
-	wire alu2_zero;
+	
+	
 //以上5个wire也是给alu的，但是暂时用不到，在阶段1只是为了消除相关的warning而已
 
 
 	wire [4:0]  RF_raddr1;
 	wire [4:0]  RF_raddr2;
-	(*mark_debug = "true"*) wire [31:0] RF_rdata1;
+	wire [31:0] RF_rdata1;
 	wire [31:0] RF_rdata2;
 //以上是寄存器堆使用的wire
 
 	wire [31:0] symbol_extension;//符号扩展单元使用
-	(*mark_debug = "true"*) wire Branch_after_AND;//这个信号是在branch和zero信号经过与门之后操作数据选择器的信号
-	(*mark_debug = "true"*) wire [31:0] add_result;//左上角加法器的结果
-	(*mark_debug = "true"*) wire [31:0] PC_input_before_jump;
-	(*mark_debug = "true"*) wire [31:0] PC_input_after_jump;//给PC输入的
+	wire Branch_after_AND;//这个信号是在branch和zero信号经过与门之后操作数据选择器的信号
+	wire [31:0] add_result;//左上角加法器的结果
+	wire [31:0] PC_input_before_jump;
+	wire [31:0] PC_input_after_jump;//给PC输入的
 
 
 
@@ -299,10 +299,10 @@ module mips_cpu(
 
 	assign Read_data_symbol_extension = (Instruction[31:26] == `lb_in)?(
 											(vAddr10 == 2'b00)?{{24{Read_data[7]}}, Read_data[7:0]}:(
-											(vAddr10 == 2'b01)?{{24{Read_data[7]}}, Read_data[15:8]}:(
-											(vAddr10 == 2'b10)?{{24{Read_data[7]}}, Read_data[23:16]}:{{24{Read_data[7]}}, Read_data[31:24]}))):(
+											(vAddr10 == 2'b01)?{{24{Read_data[15]}}, Read_data[15:8]}:(
+											(vAddr10 == 2'b10)?{{24{Read_data[23]}}, Read_data[23:16]}:{{24{Read_data[31]}}, Read_data[31:24]}))):(
 										(Instruction[31:26] == `lh_in)?(
-											(vAddr10[1] == 1'b1)?{{16{Read_data[15]}}, Read_data[31:16]}:{{16{Read_data[15]}}, Read_data[15:0]}):Read_data);//将8位/16位Read_data符号扩展
+											(vAddr10[1] == 1'b1)?{{16{Read_data[31]}}, Read_data[31:16]}:{{16{Read_data[15]}}, Read_data[15:0]}):Read_data);//将8位/16位Read_data符号扩展
 										
 
 	assign Read_data_logical_extension = (Instruction[31:26] == `lbu_in)?(
@@ -333,7 +333,9 @@ module mips_cpu(
 					  Instruction[31:26] == `swl_in ||
 					  Instruction[31:26] == `swr_in ||
 					  Instruction[31:26] == `sb_in  ||
-					  Instruction[31:26] == `sh_in  
+					  Instruction[31:26] == `sh_in  ||
+					  Instruction[31:26] == `lb_in  ||
+					  Instruction[31:26] == `lh_in
 					  )?Address_align:Address_raw;
 
 
@@ -353,37 +355,20 @@ module mips_cpu(
 							(vAddr10[1] == 1'b1)?{RF_rdata2[15:0], 16'b0}:{16'b0, RF_rdata2}):RF_rdata2)));
 
 
-	assign Write_strb = (Instruction[31:26] == `swl_in)?
-						(
+	assign Write_strb = (Instruction[31:26] == `swl_in)?(
 							(vAddr10 == 2'b00)?4'b0001:(
-								(vAddr10 == 2'b01)?4'b0011:(
-									(vAddr10 == 2'b10)?4'b0111:4'b1111
-								)
-							)
-						):
-						((Instruction[31:26] == `swr_in)?
-							(
-								(vAddr10 == 2'b00)?4'b1111:
-								(
-									(vAddr10 == 2'b01)?4'b1110:
-									(
-										(vAddr10 == 2'b10)?4'b1100:4'b1000
-									)
-								)
-							):
-							((Instruction[31:26] == `sb_in)?
-								(
-
-									(vAddr10 == 2'b00)?4'b0001:
-									(
-										(vAddr10 == 2'b01)?4'b0010:
-										(
-											(vAddr10 == 2'b10)?4'b0100:4'b1000
-										)
-									)
-								):
-								((Instruction[31:26] == `sh_in)?(
-									(vAddr10[1] == 1'b1)?4'b1100:4'b0011):(4'b1111))));//阶段1保持全1即可
+							(vAddr10 == 2'b01)?4'b0011:(
+							(vAddr10 == 2'b10)?4'b0111:4'b1111))):(
+						(Instruction[31:26] == `swr_in)?(
+							(vAddr10 == 2'b00)?4'b1111:(
+							(vAddr10 == 2'b01)?4'b1110:(
+							(vAddr10 == 2'b10)?4'b1100:4'b1000))):(
+						(Instruction[31:26] == `sb_in)?(
+							(vAddr10 == 2'b00)?4'b0001:(
+							(vAddr10 == 2'b01)?4'b0010:(
+							(vAddr10 == 2'b10)?4'b0100:4'b1000))):(
+						(Instruction[31:26] == `sh_in)?(
+							(vAddr10[1] == 1'b1)?4'b1100:4'b0011):(4'b1111))));//阶段1保持全1即可
 
 
 	assign jump_address = {add_result[31:28], Instruction[25:0], 2'b00};//jmp的地址拼接
