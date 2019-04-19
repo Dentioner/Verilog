@@ -107,7 +107,7 @@ module mips_cpu(
 	input  clk,
 
 	output reg [31:0] PC,
-	input  [31:0] Instruction,
+	(*mark_debug = "true"*) input  [31:0] Instruction,
 
 	output [31:0] Address,
 	output MemWrite,
@@ -130,7 +130,7 @@ module mips_cpu(
 
 
 	wire [10:0] control_data;
-	wire DonotJump;
+	(*mark_debug = "true"*) wire DonotJump;
 	wire RegDst;
 	wire ALUsrc;
 	wire MemtoReg;
@@ -142,15 +142,15 @@ module mips_cpu(
 	wire [3:0] ALUop;
 //以上是“控制”模块使用的wire
 
-	wire [31:0] alu1_a_raw;
+	(*mark_debug = "true"*) wire [31:0] alu1_a_raw;
 	wire [31:0] alu1_b_raw;
 
 	wire [31:0] alu1_a;
 	wire [31:0] alu1_b;
 	wire [31:0] alu2_a;
 	wire [31:0] alu2_b;
-	wire Zero_raw;//原始的Zero信号
-	wire Zero_input_to_alu2;//Zero_raw信号需要经过处理才能变成正式的信号输送给第二个alu，也就是为了区分bne和beq两种指令而设置的
+	(*mark_debug = "true"*) wire Zero_raw;//原始的Zero信号
+	(*mark_debug = "true"*) wire Zero_input_to_alu2;//Zero_raw信号需要经过处理才能变成正式的信号输送给第二个alu，也就是为了区分bne和beq两种指令而设置的
 	wire [31:0] alu1_result;
 	wire [31:0] alu2_result;
 //以上是两个alu的有用的wire
@@ -164,15 +164,15 @@ module mips_cpu(
 
 	wire [4:0]  RF_raddr1;
 	wire [4:0]  RF_raddr2;
-	wire [31:0] RF_rdata1;
+	(*mark_debug = "true"*) wire [31:0] RF_rdata1;
 	wire [31:0] RF_rdata2;
 //以上是寄存器堆使用的wire
 
 	wire [31:0] symbol_extension;//符号扩展单元使用
-	wire Branch_after_AND;//这个信号是在branch和zero信号经过与门之后操作数据选择器的信号
-	wire [31:0] add_result;//左上角加法器的结果
-	wire [31:0] PC_input_before_jump;
-	wire [31:0] PC_input_after_jump;//给PC输入的
+	(*mark_debug = "true"*) wire Branch_after_AND;//这个信号是在branch和zero信号经过与门之后操作数据选择器的信号
+	(*mark_debug = "true"*) wire [31:0] add_result;//左上角加法器的结果
+	(*mark_debug = "true"*) wire [31:0] PC_input_before_jump;
+	(*mark_debug = "true"*) wire [31:0] PC_input_after_jump;//给PC输入的
 
 
 
@@ -379,7 +379,8 @@ end
 
 
 	alu alu1(.A_raw(alu1_a), .B_raw(alu1_b), .ALUop(ALUop), .Zero(Zero_raw),  .Result(alu1_result), .Overflow(alu1_overflow), .CarryOut(alu1_carryout));//overflow 和 carryout的信号暂时没引出
-	alu alu2(.A_raw(alu2_a), .B_raw(alu2_b), .ALUop(`ADD),   .Zero(alu2_zero), .Result(alu2_result), .Overflow(alu2_overflow), .CarryOut(alu2_carryout));//Zero, overflow 和 carryout的信号暂时没引出, 此alu一直当做加法器使用
+	//alu alu2(.A_raw(alu2_a), .B_raw(alu2_b), .ALUop(`ADD),   .Zero(alu2_zero), .Result(alu2_result), .Overflow(alu2_overflow), .CarryOut(alu2_carryout));//Zero, overflow 和 carryout的信号暂时没引出, 此alu一直当做加法器使用
+	assign alu2_result = alu2_a + alu2_b;
 	//上面两个alu，第一个是样例图里面右下方的alu，第二个是样例图右上方的alu
 
 	reg_file r1(.clk(clk), .rst(rst), .waddr(RF_waddr), .raddr1(RF_raddr1), .raddr2(RF_raddr2), .wen(RF_wen), .wdata(RF_wdata), .rdata1(RF_rdata1), .rdata2(RF_rdata2));    //, .Write_strb(Write_strb_for_reg_file));
