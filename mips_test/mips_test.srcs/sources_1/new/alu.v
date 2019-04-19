@@ -3,8 +3,8 @@
 `define DATA_WIDTH 32
 
 module alu(
-	input [`DATA_WIDTH - 1:0] A_raw,
-	input [`DATA_WIDTH - 1:0] B_raw,
+	input [`DATA_WIDTH - 1:0] A,
+	input [`DATA_WIDTH - 1:0] B,
 	input [3:0] ALUop,
 	output Overflow,
 	output CarryOut,
@@ -38,8 +38,8 @@ module alu(
 	wire [`DATA_WIDTH-1 : 0]before_set;
 	wire tmp_CarryOut;
 
-	wire [`DATA_WIDTH-1 : 0]A;
-	wire [`DATA_WIDTH-1 : 0]B;
+	//wire [`DATA_WIDTH-1 : 0]A;
+	//wire [`DATA_WIDTH-1 : 0]B;
 	//这里定义的A和B是为了实现无符号数比较的时候而设定的，下面的result_raw也一样
 	wire [`DATA_WIDTH-1 : 0]Result_raw;
 
@@ -47,7 +47,7 @@ module alu(
 	assign Overflow = CarryIn[`DATA_WIDTH-1] ^ tmp_CarryOut;
 	assign CarryOut = CarryIn[0] ^ tmp_CarryOut;
 
-	assign less0 = Overflow ^ set;
+	assign less0 = (ALUop == SLTU)? CarryOut : (Overflow ^ set);
 	assign Binvert = ((ALUop == SUB)||(ALUop == SLT)||(ALUop == SLTU))?1:0;
 	assign CarryIn[0] = ((ALUop == SUB)||(ALUop == SLT)||(ALUop == SLTU))?1:0;
 	assign Operation = (ALUop == AND)?and_alu_element:(
@@ -62,17 +62,18 @@ module alu(
 
 
 //下面这3个assign是为了将无符号数的比较转化为有符号数的比较
-	assign A = (ALUop == SLTU)?{1'b0, A_raw[`DATA_WIDTH-1:1]}:A_raw;//如果是无符号数比较，则不输入全部位数的A，而是将A逻辑右移一位，变成正的有符号数
-	assign B = (ALUop == SLTU)?{1'b0, B_raw[`DATA_WIDTH-1:1]}:B_raw;//B和上面的做法一样
-	assign Result = (ALUop == SLTU)?(		//当前操作是无符号数比较吗？
+	//assign A = (ALUop == SLTU)?{1'b0, A_raw[`DATA_WIDTH-1:1]}:A_raw;//如果是无符号数比较，则不输入全部位数的A，而是将A逻辑右移一位，变成正的有符号数
+	//assign B = (ALUop == SLTU)?{1'b0, B_raw[`DATA_WIDTH-1:1]}:B_raw;//B和上面的做法一样
+	
+	/*assign Result = (ALUop == SLTU)?(		//当前操作是无符号数比较吗？
 		(Result_raw == 32'b1)?Result_raw:(	//如果是，那么当前的Result_raw是1吗？如果是，说明操作数A的高位比B小，也就是A<B
 		(Zero == 1'b0)?32'b0:(				//如果Result_raw=0，则说明高位的比较结果是A≥B，还要看Zero位。如果Zero为0，说明A的高31位大于B，则A>B
 		(A_raw[0]<B_raw[0])?32'b1:32'b0 	//如果Zero=1，说明A_raw与B_raw的高31位完全一样，则需要比较A_raw与B_raw的最低位了
 		))):(								//如果当前操作不是无符号数操作比较，则执行其他指令的判断
 		(ALUop == NOR)?~Result_raw:			//如果当前操作是NOR，则将用OR实现的结果取个反即可
-		Result_raw);						
+		Result_raw);	*/					
 
-
+	assign Result = (ALUop == NOR)?~Result_raw:Result_raw;
 
 	ALU_element a0(A[0], B[0], CarryIn[0], less0, Binvert, Operation, Result_raw[0], CarryIn[1], before_set[0]);
 	

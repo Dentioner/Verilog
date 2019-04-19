@@ -297,18 +297,20 @@ module mips_cpu(
 							(vAddr10 == 2'b10)?{RF_rdata2[31:16], Read_data[31:16]}:{RF_rdata2[31:8], Read_data[31:24]}))):Read_data))
 						)):alu1_result);//先判断是否是直接将PC+8塞进去的指令，然后再判断别的
 
-	assign Read_data_symbol_extension = (Instruction[31:26] == `lb_in)?
-										{{24{Read_data[7]}}, Read_data[7:0]}:(
-										(Instruction[31:26] == `lh_in)?
-										{{16{Read_data[15]}}, Read_data[15:0]}
-										:Read_data);//将8位/16位Read_data符号扩展
+	assign Read_data_symbol_extension = (Instruction[31:26] == `lb_in)?(
+											(vAddr10 == 2'b00)?{{24{Read_data[7]}}, Read_data[7:0]}:(
+											(vAddr10 == 2'b01)?{{24{Read_data[7]}}, Read_data[15:8]}:(
+											(vAddr10 == 2'b10)?{{24{Read_data[7]}}, Read_data[23:16]}:{{24{Read_data[7]}}, Read_data[31:24]}))):(
+										(Instruction[31:26] == `lh_in)?(
+											(vAddr10[1] == 1'b1)?{{16{Read_data[15]}}, Read_data[31:16]}:{{16{Read_data[15]}}, Read_data[15:0]}):Read_data);//将8位/16位Read_data符号扩展
 										
 
-	assign Read_data_logical_extension = (Instruction[31:26] == `lbu_in)?
-										{24'b0, Read_data[7:0]}:(
-										(Instruction[31:26] == `lhu_in)?
-										{16'b0, Read_data[15:0]}
-										:Read_data);//将8位/16位Read_data高位加0拓展为32位
+	assign Read_data_logical_extension = (Instruction[31:26] == `lbu_in)?(
+											(vAddr10 == 2'b00)?{24'b0, Read_data[7:0]}:(
+											(vAddr10 == 2'b01)?{24'b0, Read_data[15:8]}:(
+											(vAddr10 == 2'b10)?{24'b0, Read_data[23:16]}:{24'b0, Read_data[31:24]}))):(
+										(Instruction[31:26] == `lhu_in)?(
+											(vAddr10[1] == 1'b1)?{16'b0, Read_data[31:16]}:{16'b0, Read_data[15:0]}):Read_data);//将8位/16位Read_data高位加0拓展为32位
 
 
 	//下面几个assign是为了实现lwl/lwr而设置的
@@ -329,7 +331,10 @@ module mips_cpu(
 	assign Address = (Instruction[31:26] == `lwl_in || 
 					  Instruction[31:26] == `lwr_in ||
 					  Instruction[31:26] == `swl_in ||
-					  Instruction[31:26] == `swr_in)?Address_align:Address_raw;
+					  Instruction[31:26] == `swr_in ||
+					  Instruction[31:26] == `sb_in  ||
+					  Instruction[31:26] == `sh_in  
+					  )?Address_align:Address_raw;
 
 
 	assign Write_data = (Instruction[31:26] == `swl_in)?(
@@ -339,19 +344,46 @@ module mips_cpu(
 						(Instruction[31:26] == `swr_in)?(
 							(vAddr10 == 2'b00)?RF_rdata2:(
 							(vAddr10 == 2'b01)?{RF_rdata2[23:0], 8'b0}:(
-							(vAddr10 == 2'b10)?{RF_rdata2[15:0], 16'b0}:{RF_rdata2[7:0], 24'b0}))):RF_rdata2);
+							(vAddr10 == 2'b10)?{RF_rdata2[15:0], 16'b0}:{RF_rdata2[7:0], 24'b0}))):(
+						(Instruction[31:26] == `sb_in)?(
+							(vAddr10 == 2'b00)?{24'b0, RF_rdata2[7:0]}:(
+							(vAddr10 == 2'b01)?{16'b0, RF_rdata2[7:0], 8'b0}:(
+							(vAddr10 == 2'b10)?{8'b0, RF_rdata2[7:0], 16'b0}:{RF_rdata2[7:0], 24'b0}))):(
+						(Instruction[31:26] == `sh_in)?(
+							(vAddr10[1] == 1'b1)?{RF_rdata2[15:0], 16'b0}:{16'b0, RF_rdata2}):RF_rdata2)));
 
 
-	assign Write_strb = (Instruction[31:26] == `sb_in)?4'b0001:(
-						(Instruction[31:26] == `sh_in)?4'b0011:(
-						(Instruction[31:26] == `swl_in)?(
+	assign Write_strb = (Instruction[31:26] == `swl_in)?
+						(
 							(vAddr10 == 2'b00)?4'b0001:(
-							(vAddr10 == 2'b01)?4'b0011:(
-							(vAddr10 == 2'b10)?4'b0111:4'b1111))):(
-						(Instruction[31:26] == `swr_in)?(
-							(vAddr10 == 2'b00)?4'b1111:(
-							(vAddr10 == 2'b01)?4'b1110:(
-							(vAddr10 == 2'b10)?4'b1100:4'b1000))):4'b1111)));//阶段1保持全1即可
+								(vAddr10 == 2'b01)?4'b0011:(
+									(vAddr10 == 2'b10)?4'b0111:4'b1111
+								)
+							)
+						):
+						((Instruction[31:26] == `swr_in)?
+							(
+								(vAddr10 == 2'b00)?4'b1111:
+								(
+									(vAddr10 == 2'b01)?4'b1110:
+									(
+										(vAddr10 == 2'b10)?4'b1100:4'b1000
+									)
+								)
+							):
+							((Instruction[31:26] == `sb_in)?
+								(
+
+									(vAddr10 == 2'b00)?4'b0001:
+									(
+										(vAddr10 == 2'b01)?4'b0010:
+										(
+											(vAddr10 == 2'b10)?4'b0100:4'b1000
+										)
+									)
+								):
+								((Instruction[31:26] == `sh_in)?(
+									(vAddr10[1] == 1'b1)?4'b1100:4'b0011):(4'b1111))));//阶段1保持全1即可
 
 
 	assign jump_address = {add_result[31:28], Instruction[25:0], 2'b00};//jmp的地址拼接
@@ -378,7 +410,7 @@ end
 	shifter s1(.funct(funct), .shamt(shamt), .alu_a_raw(alu1_a_raw), .alu_b_raw(alu1_b_raw), .typecode(Instruction[31:26]), .alu_a(alu1_a), .alu_b(alu1_b));//最下面新增的移位模块
 
 
-	alu alu1(.A_raw(alu1_a), .B_raw(alu1_b), .ALUop(ALUop), .Zero(Zero_raw),  .Result(alu1_result), .Overflow(alu1_overflow), .CarryOut(alu1_carryout));//overflow 和 carryout的信号暂时没引出
+	alu alu1(.A(alu1_a), .B(alu1_b), .ALUop(ALUop), .Zero(Zero_raw),  .Result(alu1_result), .Overflow(alu1_overflow), .CarryOut(alu1_carryout));//overflow 和 carryout的信号暂时没引出
 	//alu alu2(.A_raw(alu2_a), .B_raw(alu2_b), .ALUop(`ADD),   .Zero(alu2_zero), .Result(alu2_result), .Overflow(alu2_overflow), .CarryOut(alu2_carryout));//Zero, overflow 和 carryout的信号暂时没引出, 此alu一直当做加法器使用
 	assign alu2_result = alu2_a + alu2_b;
 	//上面两个alu，第一个是样例图里面右下方的alu，第二个是样例图右上方的alu
