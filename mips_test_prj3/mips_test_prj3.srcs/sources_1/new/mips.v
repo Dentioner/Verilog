@@ -116,16 +116,16 @@ module mips_cpu(
 
 	//Instruction request channel
 	output [31:0] PC,
-	output Inst_Req_Valid,
+	output reg Inst_Req_Valid,
 	input Inst_Req_Ack,
 
 	//Instruction response channel
 	input  [31:0] Instruction,
 	input Inst_Valid,
-	output Inst_Ack,
+	output reg Inst_Ack,
 
 	//Memory request channel
-	output [31:0] Address,
+	output reg [31:0] Address,
 	output reg MemWrite,
 	output [31:0] Write_data,
 	output [3:0] Write_strb,
@@ -135,7 +135,7 @@ module mips_cpu(
 	//Memory data response channel
 	input  [31:0] Read_data,
 	input Read_data_Valid,
-	output Read_data_Ack
+	output reg Read_data_Ack
 );
 
 	// TODO: Please add your logic code here
@@ -218,46 +218,48 @@ module mips_cpu(
 	reg [2:0] cpu_status_next;
 	reg clk_past;
 	reg PC_reg;
+	reg RF_wen_reg;
+	reg [31:0] Instruction_Register;
 
 	wire [31:0] Address_before_always;
 	wire RF_wen_before_always;
 	wire MemRead_wire;
 	wire MemWrite_wire;
+	wire [31:0] Instruction_for_submodule;
 
-
-	assign funct = Instruction[5:0];
-	assign shamt = Instruction[10:6];
+	assign funct = Instruction_Register[5:0];
+	assign shamt = Instruction_Register[10:6];
 
 
 	//下面这堆assign是书上样例的“控制”模块
-	assign control_data =   (Instruction[31:26] == `R_type_in)?`R_type_out:(
-							(Instruction[31:26] == `lw_in)    ?`lw_out    :(
-							(Instruction[31:26] == `sw_in)    ?`sw_out    :(
-							(Instruction[31:26] == `beq_in)   ?`beq_out   :(
-							(Instruction[31:26] == `addiu_in) ?`addiu_out :(
-							(Instruction[31:26] == `bne_in)   ?`bne_out   :(
-							(Instruction[31:26] == `jal_in)   ?`jal_out   :(
-							(Instruction[31:26] == `lui_in)   ?`lui_out   :(
-							(Instruction[31:26] == `slti_in)  ?`slti_out  :(
-							(Instruction[31:26] == `sltiu_in) ?`sltiu_out :(
-							(Instruction[31:26] == `andi_in)  ?`andi_out  :(
-							(Instruction[31:26] == `bgez_in)  ?`bgez_out  :(
-							(Instruction[31:26] == `blez_in)  ?`blez_out  :(
-							(Instruction[31:26] == `bltz_in)  ?`bltz_out  :(
-							(Instruction[31:26] == `lb_in)    ?`lb_out    :(
-							(Instruction[31:26] == `lbu_in)   ?`lbu_out   :(
-							(Instruction[31:26] == `lh_in)    ?`lh_out    :(
-							(Instruction[31:26] == `lhu_in)   ?`lhu_out   :(
-							(Instruction[31:26] == `lwl_in)   ?`lwl_out   :(
-							(Instruction[31:26] == `lwr_in)   ?`lwr_out   :(
-							(Instruction[31:26] == `ori_in)	  ?`ori_out	  :(
-							(Instruction[31:26] == `sb_in)	  ?`sb_out	  :(
-							(Instruction[31:26] == `sh_in)	  ?`sh_out	  :(
-							(Instruction[31:26] == `swl_in)	  ?`swl_out	  :(
-							(Instruction[31:26] == `swr_in)	  ?`swr_out   :(
-							(Instruction[31:26] == `xori_in)  ?`xori_out  :(
+	assign control_data =   (Instruction_Register[31:26] == `R_type_in)?`R_type_out:(
+							(Instruction_Register[31:26] == `lw_in)    ?`lw_out    :(
+							(Instruction_Register[31:26] == `sw_in)    ?`sw_out    :(
+							(Instruction_Register[31:26] == `beq_in)   ?`beq_out   :(
+							(Instruction_Register[31:26] == `addiu_in) ?`addiu_out :(
+							(Instruction_Register[31:26] == `bne_in)   ?`bne_out   :(
+							(Instruction_Register[31:26] == `jal_in)   ?`jal_out   :(
+							(Instruction_Register[31:26] == `lui_in)   ?`lui_out   :(
+							(Instruction_Register[31:26] == `slti_in)  ?`slti_out  :(
+							(Instruction_Register[31:26] == `sltiu_in) ?`sltiu_out :(
+							(Instruction_Register[31:26] == `andi_in)  ?`andi_out  :(
+							(Instruction_Register[31:26] == `bgez_in)  ?`bgez_out  :(
+							(Instruction_Register[31:26] == `blez_in)  ?`blez_out  :(
+							(Instruction_Register[31:26] == `bltz_in)  ?`bltz_out  :(
+							(Instruction_Register[31:26] == `lb_in)    ?`lb_out    :(
+							(Instruction_Register[31:26] == `lbu_in)   ?`lbu_out   :(
+							(Instruction_Register[31:26] == `lh_in)    ?`lh_out    :(
+							(Instruction_Register[31:26] == `lhu_in)   ?`lhu_out   :(
+							(Instruction_Register[31:26] == `lwl_in)   ?`lwl_out   :(
+							(Instruction_Register[31:26] == `lwr_in)   ?`lwr_out   :(
+							(Instruction_Register[31:26] == `ori_in)	  ?`ori_out	  :(
+							(Instruction_Register[31:26] == `sb_in)	  ?`sb_out	  :(
+							(Instruction_Register[31:26] == `sh_in)	  ?`sh_out	  :(
+							(Instruction_Register[31:26] == `swl_in)	  ?`swl_out	  :(
+							(Instruction_Register[31:26] == `swr_in)	  ?`swr_out   :(
+							(Instruction_Register[31:26] == `xori_in)  ?`xori_out  :(
 
-							(Instruction[31:26] == `j_in)	  ?`j_out	  :11'b1000000000))))))))))))))))))))))))));
+							(Instruction_Register[31:26] == `j_in)	  ?`j_out	  :11'b1000000000))))))))))))))))))))))))));
 
 	assign DonotJump 	 = control_data[10];
 	assign RegDst    	 = control_data[9];
@@ -270,26 +272,26 @@ module mips_cpu(
 	assign ALUop_raw 	 = control_data[2:0];
 
 //下面这堆assign是寄存器堆使用的
-	assign RF_raddr1 = Instruction[25:21];
-	assign RF_raddr2 = Instruction[20:16];//这个raddr2可能还要改，因为样例图里面好像有Instruction20~16不进人raddr2的
+	assign RF_raddr1 = Instruction_Register[25:21];
+	assign RF_raddr2 = Instruction_Register[20:16];//这个raddr2可能还要改，因为样例图里面好像有Instruction20~16不进人raddr2的
 	
 
-	assign RF_waddr = (Instruction[31:26] == `jal_in)?31:(
-						(RegDst == 1)?Instruction[15:11]:Instruction[20:16]);//此为样例图寄存器堆左边的数据选择器
+	assign RF_waddr = (Instruction_Register[31:26] == `jal_in)?31:(
+						(RegDst == 1)?Instruction_Register[15:11]:Instruction_Register[20:16]);//此为样例图寄存器堆左边的数据选择器
 	
 
 	assign RF_wen_before_always = 
 					(RF_waddr == 32'b0)?1'b0:(
-					(Instruction[31:26] == `R_type_in && funct == `movn_funct && RF_rdata2 == 32'b0)?1'b0:(//如果执行的是movn指令，而且rt=0时，写使能低电平
-					(Instruction[31:26] == `R_type_in && funct == `movz_funct && RF_rdata2 != 32'b0)?1'b0://如果执行的是movz指令，而且rt≠0时，写使能低电平
+					(Instruction_Register[31:26] == `R_type_in && funct == `movn_funct && RF_rdata2 == 32'b0)?1'b0:(//如果执行的是movn指令，而且rt=0时，写使能低电平
+					(Instruction_Register[31:26] == `R_type_in && funct == `movz_funct && RF_rdata2 != 32'b0)?1'b0://如果执行的是movz指令，而且rt≠0时，写使能低电平
 					RegWrite));//好像仿真的时候认为写地址为0的时候是不能写的，
 	//但是实际上在regfile模块里面都保证了写地址为0的时候不接受外来信号
 	//为了让仿真通过只好再把这个地方加点条件保证RF_wen不能在写地址为0的时候=1了。
 
 //下面这堆assign是两个alu使用的
-	assign alu1_a_raw = (Instruction[31:26] == `R_type_in && funct == `jalr_funct)?(add_result + 4):RF_rdata1;//这里如果发现指令是jalr，直接将PC+4塞到A输入端即可
+	assign alu1_a_raw = (Instruction_Register[31:26] == `R_type_in && funct == `jalr_funct)?(add_result + 4):RF_rdata1;//这里如果发现指令是jalr，直接将PC+4塞到A输入端即可
 	assign alu1_b_raw = (ALUsrc == 1)?symbol_extension:(
-						(Instruction[31:26] == `R_type_in && funct == `movn_funct)?32'b0://如果ALUSrc=0，说明操作数b不是16位那边过来的，这时候再判断是不是在执行movn指令，
+						(Instruction_Register[31:26] == `R_type_in && funct == `movn_funct)?32'b0://如果ALUSrc=0，说明操作数b不是16位那边过来的，这时候再判断是不是在执行movn指令，
 						RF_rdata2);//如果是movn，则将操作数b变成0，否则照常输入RF_data2
 						//此为寄存器堆右边的数据选择器
 	assign alu2_a = add_result;
@@ -297,19 +299,19 @@ module mips_cpu(
 
 
 //下面这堆assign是样例图寄存器下面的“符号扩展”模块
-	assign symbol_extension = (Instruction[31:26] == `lui_in)?{Instruction[15:0], 16'b0}:(
-							  (Instruction[31:26] == `sltiu_in || 
-							  	Instruction[31:26] == `andi_in ||
-							  	Instruction[31:26] == `xori_in || 
-							  	Instruction[31:26] == `ori_in)?{16'b0, Instruction[15:0]}:
-							{{16{Instruction[15]}}, Instruction[15:0]});//如果是lui指令则做左移，否则符号拓展
+	assign symbol_extension = (Instruction_Register[31:26] == `lui_in)?{Instruction_Register[15:0], 16'b0}:(
+							  (Instruction_Register[31:26] == `sltiu_in || 
+							  	Instruction_Register[31:26] == `andi_in ||
+							  	Instruction_Register[31:26] == `xori_in || 
+							  	Instruction_Register[31:26] == `ori_in)?{16'b0, Instruction_Register[15:0]}:
+							{{16{Instruction_Register[15]}}, Instruction_Register[15:0]});//如果是lui指令则做左移，否则符号拓展
 
 //下面这堆assign是给右上角的数据选择器用的
 	assign Branch_after_AND = Branch & Zero_input_to_alu2;
-	assign Zero_input_to_alu2 = (Instruction[31:26] == `bne_in)?~Zero_raw:(//Zero_raw对于bne需要处理一下
-								(Instruction[31:26] == `bgez_in && Instruction[20:16] == `regimm_bgez)?~RF_rdata1[31]:(
-								(Instruction[31:26] == `bltz_in && Instruction[20:16] == `regimm_bltz)?RF_rdata1[31]:(
-								(Instruction[31:26] == `blez_in)?(RF_rdata1[31]|Zero_raw):
+	assign Zero_input_to_alu2 = (Instruction_Register[31:26] == `bne_in)?~Zero_raw:(//Zero_raw对于bne需要处理一下
+								(Instruction_Register[31:26] == `bgez_in && Instruction_Register[20:16] == `regimm_bgez)?~RF_rdata1[31]:(
+								(Instruction_Register[31:26] == `bltz_in && Instruction_Register[20:16] == `regimm_bltz)?RF_rdata1[31]:(
+								(Instruction_Register[31:26] == `blez_in)?(RF_rdata1[31]|Zero_raw):
 									Zero_raw)));
 	assign PC_input_before_jump = (Branch_after_AND == 1)?alu2_result:add_result;
 
@@ -317,42 +319,42 @@ module mips_cpu(
 	assign add_result = PC_reg + 4;
 
 //下面这个是样例图最右边主存旁边的数据选择器
-	assign RF_wdata = (Instruction[31:26] == `jal_in)?(PC_reg+8):(
+	assign RF_wdata = (Instruction_Register[31:26] == `jal_in)?(PC_reg+8):(
 						(MemtoReg == 1)?(
-						(Instruction[31:26] == `lb_in || Instruction[31:26] == `lh_in)?Read_data_symbol_extension:(
-						(Instruction[31:26] == `lbu_in || Instruction[31:26] == `lhu_in)?Read_data_logical_extension:(
-						(Instruction[31:26] == `lwl_in)?(
+						(Instruction_Register[31:26] == `lb_in || Instruction_Register[31:26] == `lh_in)?Read_data_symbol_extension:(
+						(Instruction_Register[31:26] == `lbu_in || Instruction_Register[31:26] == `lhu_in)?Read_data_logical_extension:(
+						(Instruction_Register[31:26] == `lwl_in)?(
 							(vAddr10 == 2'b00)?{Read_data[7:0], RF_rdata2[23:0]}:(
 							(vAddr10 == 2'b01)?{Read_data[15:0], RF_rdata2[15:0]}:(
 							(vAddr10 == 2'b10)?{Read_data[23:0], RF_rdata2[7:0]}:Read_data))):(
-						(Instruction[31:26] == `lwr_in)?(
+						(Instruction_Register[31:26] == `lwr_in)?(
 							(vAddr10 == 2'b00)?Read_data:(
 							(vAddr10 == 2'b01)?{RF_rdata2[31:24], Read_data[31:8]}:(
 							(vAddr10 == 2'b10)?{RF_rdata2[31:16], Read_data[31:16]}:{RF_rdata2[31:8], Read_data[31:24]}))):Read_data))
 						)):alu1_result);//先判断是否是直接将PC+8塞进去的指令，然后再判断别的
 
-	assign Read_data_symbol_extension = (Instruction[31:26] == `lb_in)?(
+	assign Read_data_symbol_extension = (Instruction_Register[31:26] == `lb_in)?(
 											(vAddr10 == 2'b00)?{{24{Read_data[7]}}, Read_data[7:0]}:(
 											(vAddr10 == 2'b01)?{{24{Read_data[15]}}, Read_data[15:8]}:(
 											(vAddr10 == 2'b10)?{{24{Read_data[23]}}, Read_data[23:16]}:{{24{Read_data[31]}}, Read_data[31:24]}))):(
-										(Instruction[31:26] == `lh_in)?(
+										(Instruction_Register[31:26] == `lh_in)?(
 											(vAddr10[1] == 1'b1)?{{16{Read_data[31]}}, Read_data[31:16]}:{{16{Read_data[15]}}, Read_data[15:0]}):Read_data);//将8位/16位Read_data符号扩展
 										
 
-	assign Read_data_logical_extension = (Instruction[31:26] == `lbu_in)?(
+	assign Read_data_logical_extension = (Instruction_Register[31:26] == `lbu_in)?(
 											(vAddr10 == 2'b00)?{24'b0, Read_data[7:0]}:(
 											(vAddr10 == 2'b01)?{24'b0, Read_data[15:8]}:(
 											(vAddr10 == 2'b10)?{24'b0, Read_data[23:16]}:{24'b0, Read_data[31:24]}))):(
-										(Instruction[31:26] == `lhu_in)?(
+										(Instruction_Register[31:26] == `lhu_in)?(
 											(vAddr10[1] == 1'b1)?{16'b0, Read_data[31:16]}:{16'b0, Read_data[15:0]}):Read_data);//将8位/16位Read_data高位加0拓展为32位
 
 
 	//下面几个assign是为了实现lwl/lwr而设置的
-	assign Write_strb_for_reg_file = (Instruction[31:26] == `lwl_in)?(
+	assign Write_strb_for_reg_file = (Instruction_Register[31:26] == `lwl_in)?(
 										(vAddr10 == 2'b00)?4'b1000:(
 										(vAddr10 == 2'b01)?4'b1100:(
 										(vAddr10 == 2'b10)?4'b1110:4'b1111))):(
-									 (Instruction[31:26] == `lwr_in)?(
+									 (Instruction_Register[31:26] == `lwr_in)?(
 									 	(vAddr10 == 2'b00)?4'b1111:(
 									 	(vAddr10 == 2'b01)?4'b0111:(
 									 	(vAddr10 == 2'b10)?4'b0011:4'b0001))):4'b1111);
@@ -363,59 +365,59 @@ module mips_cpu(
 	assign Address_raw = alu1_result;
 	assign Address_align = Address_raw - vAddr10;
 	assign Address_before_always =
-					 (Instruction[31:26] == `lwl_in || 
-					  Instruction[31:26] == `lwr_in ||
-					  Instruction[31:26] == `swl_in ||
-					  Instruction[31:26] == `swr_in ||
-					  Instruction[31:26] == `sb_in  ||
-					  Instruction[31:26] == `sh_in  ||
-					  Instruction[31:26] == `lb_in  ||
-					  Instruction[31:26] == `lh_in
+					 (Instruction_Register[31:26] == `lwl_in || 
+					  Instruction_Register[31:26] == `lwr_in ||
+					  Instruction_Register[31:26] == `swl_in ||
+					  Instruction_Register[31:26] == `swr_in ||
+					  Instruction_Register[31:26] == `sb_in  ||
+					  Instruction_Register[31:26] == `sh_in  ||
+					  Instruction_Register[31:26] == `lb_in  ||
+					  Instruction_Register[31:26] == `lh_in
 					  )?Address_align:Address_raw;
 
 
-	assign Write_data = (Instruction[31:26] == `swl_in)?(
+	assign Write_data = (Instruction_Register[31:26] == `swl_in)?(
 							(vAddr10 == 2'b00)?{24'b0, RF_rdata2[31:24]}:(
 							(vAddr10 == 2'b01)?{16'b0, RF_rdata2[31:16]}:(
 							(vAddr10 == 2'b10)?{8'b0,  RF_rdata2[31:8]}:RF_rdata2))):(
-						(Instruction[31:26] == `swr_in)?(
+						(Instruction_Register[31:26] == `swr_in)?(
 							(vAddr10 == 2'b00)?RF_rdata2:(
 							(vAddr10 == 2'b01)?{RF_rdata2[23:0], 8'b0}:(
 							(vAddr10 == 2'b10)?{RF_rdata2[15:0], 16'b0}:{RF_rdata2[7:0], 24'b0}))):(
-						(Instruction[31:26] == `sb_in)?(
+						(Instruction_Register[31:26] == `sb_in)?(
 							(vAddr10 == 2'b00)?{24'b0, RF_rdata2[7:0]}:(
 							(vAddr10 == 2'b01)?{16'b0, RF_rdata2[7:0], 8'b0}:(
 							(vAddr10 == 2'b10)?{8'b0, RF_rdata2[7:0], 16'b0}:{RF_rdata2[7:0], 24'b0}))):(
-						(Instruction[31:26] == `sh_in)?(
+						(Instruction_Register[31:26] == `sh_in)?(
 							(vAddr10[1] == 1'b1)?{RF_rdata2[15:0], 16'b0}:{16'b0, RF_rdata2}):RF_rdata2)));
 
 
-	assign Write_strb = (Instruction[31:26] == `swl_in)?(
+	assign Write_strb = (Instruction_Register[31:26] == `swl_in)?(
 							(vAddr10 == 2'b00)?4'b0001:(
 							(vAddr10 == 2'b01)?4'b0011:(
 							(vAddr10 == 2'b10)?4'b0111:4'b1111))):(
-						(Instruction[31:26] == `swr_in)?(
+						(Instruction_Register[31:26] == `swr_in)?(
 							(vAddr10 == 2'b00)?4'b1111:(
 							(vAddr10 == 2'b01)?4'b1110:(
 							(vAddr10 == 2'b10)?4'b1100:4'b1000))):(
-						(Instruction[31:26] == `sb_in)?(
+						(Instruction_Register[31:26] == `sb_in)?(
 							(vAddr10 == 2'b00)?4'b0001:(
 							(vAddr10 == 2'b01)?4'b0010:(
 							(vAddr10 == 2'b10)?4'b0100:4'b1000))):(
-						(Instruction[31:26] == `sh_in)?(
+						(Instruction_Register[31:26] == `sh_in)?(
 							(vAddr10[1] == 1'b1)?4'b1100:4'b0011):(4'b1111))));//阶段1保持全1即可
 
 
-	assign jump_address = {add_result[31:28], Instruction[25:0], 2'b00};//jmp的地址拼接
+	assign jump_address = {add_result[31:28], Instruction_Register[25:0], 2'b00};//jmp的地址拼接
 
 	assign PC_input_after_jump =(DonotJump)?(
-								(funct == `jr_funct && Instruction[31:26] == `R_type_in)?alu1_result:(
-								(funct == `jalr_funct && Instruction[31:26] == `R_type_in)?RF_rdata1:PC_input_before_jump
+								(funct == `jr_funct && Instruction_Register[31:26] == `R_type_in)?alu1_result:(
+								(funct == `jalr_funct && Instruction_Register[31:26] == `R_type_in)?RF_rdata1:PC_input_before_jump
 								)):jump_address;//这个地方实现多个信号选择，jump=1表示不用j类地址，而funct为jr时直接使用alu1的结果
 
 
 	//下面是程序计数器PC的赋值流程
-	
+	/*
 	always @(posedge clk or posedge rst) 
 	begin
 		if (rst) 
@@ -423,9 +425,10 @@ module mips_cpu(
 		else 
 			PC_reg <= PC_input_after_jump;
 	end
-
+	*/
 	assign PC = PC_reg;
-
+	assign RF_wen = RF_wen_reg;
+	assign Instruction_for_submodule = Instruction_Register;
 
 	ALU_controller act1(.funct(funct), .ALUop_raw(ALUop_raw), .ALUop(ALUop));//书上样例的“ALU控制”模块
 	shifter s1(.funct(funct), .shamt(shamt), .alu_a_raw(alu1_a_raw), .alu_b_raw(alu1_b_raw), .typecode(Instruction[31:26]), .alu_a(alu1_a), .alu_b(alu1_b));//最下面新增的移位模块
@@ -471,28 +474,28 @@ module mips_cpu(
 				cpu_status_next = `ID_EX;
 		`ID_EX:
 		begin
-			if (Instruction[31:26] == `lb_in  ||//Load指令
-				Instruction[31:26] == `lh_in  ||
-				Instruction[31:26] == `lwl_in ||
-				Instruction[31:26] == `lw_in  ||
-				Instruction[31:26] == `lbu_in ||
-				Instruction[31:26] == `lhu_in ||
-				Instruction[31:26] == `lwr_in)
+			if (Instruction_Register[31:26] == `lb_in  ||//Load指令
+				Instruction_Register[31:26] == `lh_in  ||
+				Instruction_Register[31:26] == `lwl_in ||
+				Instruction_Register[31:26] == `lw_in  ||
+				Instruction_Register[31:26] == `lbu_in ||
+				Instruction_Register[31:26] == `lhu_in ||
+				Instruction_Register[31:26] == `lwr_in)
 
 				cpu_status_next = `LD;
-			else if (Instruction[31:26] == `sb_in  ||//Store指令
-					 Instruction[31:26] == `sh_in  ||
-					 Instruction[31:26] == `swl_in ||
-					 Instruction[31:26] == `sw_in  ||
-					 Instruction[31:26] == `swr_in)
+			else if (Instruction_Register[31:26] == `sb_in  ||//Store指令
+					 Instruction_Register[31:26] == `sh_in  ||
+					 Instruction_Register[31:26] == `swl_in ||
+					 Instruction_Register[31:26] == `sw_in  ||
+					 Instruction_Register[31:26] == `swr_in)
 			 	cpu_status_next = `ST;
-			else if (Instruction[31:26] == `bgez_in ||//跳转指令
-					 Instruction[31:26] == `blez_in ||
-					 Instruction[31:26] == `bltz_in ||
-					 Instruction[31:26] == `bne_in  ||
-					 Instruction[31:26] == `beq_in  ||
-					 Instruction[31:26] == `j_in    ||
-					 Instruction[31:26] == `jal_in)
+			else if (Instruction_Register[31:26] == `bgez_in ||//跳转指令
+					 Instruction_Register[31:26] == `blez_in ||
+					 Instruction_Register[31:26] == `bltz_in ||
+					 Instruction_Register[31:26] == `bne_in  ||
+					 Instruction_Register[31:26] == `beq_in  ||
+					 Instruction_Register[31:26] == `j_in    ||
+					 Instruction_Register[31:26] == `jal_in)
 				cpu_status_next = `IF;
 			else
 				cpu_status_next = `WB;//其他指令
@@ -526,8 +529,8 @@ module mips_cpu(
 		`IF:
 		begin
 			Inst_Req_Valid = 1'b1;
-			RF_wen = 1'b0;//记得修改别处的RF_wen信号
-			Address = Address_before_always;
+			RF_wen_reg = 1'b0;//记得修改别处的RF_wen信号
+			//Address = Address_before_always;
 			if (!clk_past && clk && Inst_Req_Ack)//说明是上升沿
 			begin
 				Inst_Req_Valid = 1'b0;
@@ -536,28 +539,28 @@ module mips_cpu(
 		`IW:
 		begin
 			Inst_Ack = 1'b1;
-			RF_wen = 1'b0;//记得修改别处的RF_wen信号
-			Address = Address_before_always;
+			RF_wen_reg = 1'b0;//记得修改别处的RF_wen信号
+			//Address = Address_before_always;
 			if (!clk_past && clk && Inst_Valid)//说明是上升沿
 			begin
-				
+				Instruction_Register = Instruction;
 				Inst_Ack = 1'b0;	
 			end	
 		end
 		`ID_EX:
 		begin
-			RF_wen = RF_wen_before_always; //=1'b1;//记得修改别处的RF_wen信号
-			if (Instruction[31:26] == `jal_in ||
-				(Instruction[31:26] == `R_type_in && funct == `jalr_funct))
-				Address = 31;//记得修改别处的Address
-			else //别的情况下address怎么变
-				Address = Address_before_always;
+			RF_wen_reg = RF_wen_before_always; //=1'b1;//记得修改别处的RF_wen信号
+			//if (Instruction[31:26] == `jal_in ||
+			//	(Instruction[31:26] == `R_type_in && funct == `jalr_funct))
+			//	Address = 31;//记得修改别处的Address
+			//else //别的情况下address怎么变
+			//	Address = Address_before_always;
 		end
 		`ST:
 		begin
 			MemWrite = MemWrite_wire; //= 1'b1;//记得修改别处的MemWrite
-			RF_wen = 1'b0;//记得修改别处的RF_wen信号
-			Address = Address_before_always;
+			RF_wen_reg = 1'b0;//记得修改别处的RF_wen信号
+			//Address = Address_before_always;
 			if (!clk_past && clk && Mem_Req_Ack)//说明是上升沿
 			begin
 				MemWrite = 1'b0;
@@ -567,8 +570,8 @@ module mips_cpu(
 		`LD:
 		begin
 			MemRead = MemRead_wire; //=1'b1;//记得修改别处的MemRead
-			RF_wen = 1'b0;//记得修改别处的RF_wen信号
-			Address = Address_before_always;
+			RF_wen_reg = 1'b0;//记得修改别处的RF_wen信号
+			//Address = Address_before_always;
 			if (!clk_past && clk && Mem_Req_Ack)//说明是上升沿
 			begin
 				
@@ -578,8 +581,8 @@ module mips_cpu(
 		`RDW:
 		begin
 			Read_data_Ack = 1'b1;
-			RF_wen = 1'b0;//记得修改别处的RF_wen信号
-			Address = Address_before_always;
+			RF_wen_reg = 1'b0;//记得修改别处的RF_wen信号
+			//Address = Address_before_always;
 			if (!clk_past && clk && Read_data_Valid)//说明是上升沿
 			begin
 				Read_data_Ack = 1'b0;
@@ -588,8 +591,8 @@ module mips_cpu(
 		end
 		`WB:
 		begin
-			RF_wen = RF_wen_before_always;//= 1'b1;
-			Address = Address_before_always;
+			RF_wen_reg = RF_wen_before_always;//= 1'b1;
+			//Address = Address_before_always;
 		end
 		default:
 			;//暂时没啥操作
@@ -615,7 +618,15 @@ module mips_cpu(
 		else 
 		begin
 			if (cpu_status_now == `ID_EX)
-				PC_reg <= PC_input_after_jump;
+			begin
+				PC_reg <= PC_input_after_jump;		
+				if (Instruction_Register[31:26] == `jal_in ||
+				(Instruction_Register[31:26] == `R_type_in && funct == `jalr_funct))
+					Address <= 31;
+				else //别的情况下address怎么变
+					Address <= Address_before_always;
+			end	
+
 		end
 	end
 
