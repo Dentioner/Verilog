@@ -218,7 +218,8 @@ module mips_cpu(
 	reg [2:0] cpu_status_next;
 	reg clk_past;
 
-	
+
+	wire [31:0] Address_before_always;
 
 
 	assign funct = Instruction[5:0];
@@ -357,7 +358,8 @@ module mips_cpu(
 //下面是样例图右边主存的一堆输出信号
 	assign Address_raw = alu1_result;
 	assign Address_align = Address_raw - vAddr10;
-	assign Address = (Instruction[31:26] == `lwl_in || 
+	assign Address_before_always =
+					 (Instruction[31:26] == `lwl_in || 
 					  Instruction[31:26] == `lwr_in ||
 					  Instruction[31:26] == `swl_in ||
 					  Instruction[31:26] == `swr_in ||
@@ -520,46 +522,51 @@ module mips_cpu(
 		begin
 			Inst_Req_Valid = 1'b1;
 			RF_wen = 1'b0;//记得修改别处的RF_wen信号
+			Address = Address_before_always;
 			if (!clk_past && clk && Inst_Req_Ack)//说明是上升沿
 			begin
 				Inst_Req_Valid = 1'b0;
-				Inst_Req_Ack = 1'b0;//**********这样算组合环吗？**************		
 			end	
 		end
 		`IW:
 		begin
 			Inst_Ack = 1'b1;
 			RF_wen = 1'b0;//记得修改别处的RF_wen信号
+			Address = Address_before_always;
 			if (!clk_past && clk && Inst_Valid)//说明是上升沿
 			begin
-				//Inst_Valid = 1'b0;
-				Inst_Ack = 1'b0;//**********这样算组合环吗？**************		
+				
+				Inst_Ack = 1'b0;	
 			end	
 		end
 		`ID_EX:
+		begin
 			RF_wen = 1'b1;//记得修改别处的RF_wen信号
 			if (Instruction[31:26] == `jal_in ||
-				(Instruction[31:26] == `R_type_in && funct = `jalr_funct))
+				(Instruction[31:26] == `R_type_in && funct == `jalr_funct))
 				Address = 31;//记得修改别处的Address
-			//else :别的情况下address怎么变
-
+			else //别的情况下address怎么变
+				Address = Address_before_always;
+		end
 		`ST:
 		begin
 			MemWrite = 1'b1;//记得修改别处的MemWrite
 			RF_wen = 1'b0;//记得修改别处的RF_wen信号
+			Address = Address_before_always;
 			if (!clk_past && clk && Mem_Req_Ack)//说明是上升沿
 			begin
 				MemWrite = 1'b0;
-				Mem_Req_Ack = 1'b0;//**********这样算组合环吗？**************		
+				
 			end	
 		end
 		`LD:
 		begin
 			MemRead = 1'b1;//记得修改别处的MemRead
 			RF_wen = 1'b0;//记得修改别处的RF_wen信号
+			Address = Address_before_always;
 			if (!clk_past && clk && Mem_Req_Ack)//说明是上升沿
 			begin
-				Mem_Req_Ack = 1'b0;//**********这样算组合环吗？**************	
+				
 				MemRead = 1'b0;	
 			end	
 		end
@@ -567,14 +574,18 @@ module mips_cpu(
 		begin
 			Read_data_Ack = 1'b1;
 			RF_wen = 1'b0;//记得修改别处的RF_wen信号
+			Address = Address_before_always;
 			if (!clk_past && clk && Read_data_Valid)//说明是上升沿
 			begin
-				Read_data_Ack = 1'b0;//**********这样算组合环吗？**************
-				//Read_data_Valid = 1'b0;		
+				Read_data_Ack = 1'b0;
+				
 			end
 		end
 		`WB:
+		begin
 			RF_wen = 1'b1;
+			Address = Address_before_always;
+		end
 		default:
 			;//暂时没啥操作
 		endcase
