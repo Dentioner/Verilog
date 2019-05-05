@@ -126,10 +126,10 @@ module mips_cpu(
 
 	//Memory request channel
 	output [31:0] Address,
-	output MemWrite,
+	output reg MemWrite,
 	output [31:0] Write_data,
 	output [3:0] Write_strb,
-	output MemRead,
+	output reg MemRead,
 	input Mem_Req_Ack,
 
 	//Memory data response channel
@@ -217,9 +217,12 @@ module mips_cpu(
 	reg [2:0] cpu_status_now;
 	reg [2:0] cpu_status_next;
 	reg clk_past;
-
+	reg PC_reg;
 
 	wire [31:0] Address_before_always;
+	wire RF_wen_before_always;
+	wire MemRead_wire;
+	wire MemWrite_wire;
 
 
 	assign funct = Instruction[5:0];
@@ -256,15 +259,15 @@ module mips_cpu(
 
 							(Instruction[31:26] == `j_in)	  ?`j_out	  :11'b1000000000))))))))))))))))))))))))));
 
-	assign DonotJump = control_data[10];
-	assign RegDst    = control_data[9];
-	assign ALUsrc    = control_data[8];
-	assign MemtoReg  = control_data[7];
-	assign RegWrite  = control_data[6];
-	assign MemRead   = control_data[5];
-	assign MemWrite  = control_data[4];
-	assign Branch    = control_data[3];
-	assign ALUop_raw = control_data[2:0];
+	assign DonotJump 	 = control_data[10];
+	assign RegDst    	 = control_data[9];
+	assign ALUsrc    	 = control_data[8];
+	assign MemtoReg  	 = control_data[7];
+	assign RegWrite		 = control_data[6];
+	assign MemRead_wire  = control_data[5];
+	assign MemWrite_wire = control_data[4];
+	assign Branch    	 = control_data[3];
+	assign ALUop_raw 	 = control_data[2:0];
 
 //下面这堆assign是寄存器堆使用的
 	assign RF_raddr1 = Instruction[25:21];
@@ -275,7 +278,8 @@ module mips_cpu(
 						(RegDst == 1)?Instruction[15:11]:Instruction[20:16]);//此为样例图寄存器堆左边的数据选择器
 	
 
-	assign RF_wen = (RF_waddr == 32'b0)?1'b0:(
+	assign RF_wen_before_always = 
+					(RF_waddr == 32'b0)?1'b0:(
 					(Instruction[31:26] == `R_type_in && funct == `movn_funct && RF_rdata2 == 32'b0)?1'b0:(//如果执行的是movn指令，而且rt=0时，写使能低电平
 					(Instruction[31:26] == `R_type_in && funct == `movz_funct && RF_rdata2 != 32'b0)?1'b0://如果执行的是movz指令，而且rt≠0时，写使能低电平
 					RegWrite));//好像仿真的时候认为写地址为0的时候是不能写的，
@@ -310,10 +314,10 @@ module mips_cpu(
 	assign PC_input_before_jump = (Branch_after_AND == 1)?alu2_result:add_result;
 
 //下面这个是样例图左边的加法器
-	assign add_result = PC + 4;
+	assign add_result = PC_reg + 4;
 
 //下面这个是样例图最右边主存旁边的数据选择器
-	assign RF_wdata = (Instruction[31:26] == `jal_in)?(PC+8):(
+	assign RF_wdata = (Instruction[31:26] == `jal_in)?(PC_reg+8):(
 						(MemtoReg == 1)?(
 						(Instruction[31:26] == `lb_in || Instruction[31:26] == `lh_in)?Read_data_symbol_extension:(
 						(Instruction[31:26] == `lbu_in || Instruction[31:26] == `lhu_in)?Read_data_logical_extension:(
@@ -411,15 +415,16 @@ module mips_cpu(
 
 
 	//下面是程序计数器PC的赋值流程
+	
 	always @(posedge clk or posedge rst) 
 	begin
 		if (rst) 
-			PC <= 32'b0;// reset	
+			PC_reg <= 32'b0;// reset	
 		else 
-			PC <= PC_input_after_jump;
+			PC_reg <= PC_input_after_jump;
 	end
 
-
+	assign PC = PC_reg;
 
 
 	ALU_controller act1(.funct(funct), .ALUop_raw(ALUop_raw), .ALUop(ALUop));//书上样例的“ALU控制”模块
@@ -541,7 +546,7 @@ module mips_cpu(
 		end
 		`ID_EX:
 		begin
-			RF_wen = 1'b1;//记得修改别处的RF_wen信号
+			RF_wen = RF_wen_before_always; //=1'b1;//记得修改别处的RF_wen信号
 			if (Instruction[31:26] == `jal_in ||
 				(Instruction[31:26] == `R_type_in && funct == `jalr_funct))
 				Address = 31;//记得修改别处的Address
@@ -550,7 +555,7 @@ module mips_cpu(
 		end
 		`ST:
 		begin
-			MemWrite = 1'b1;//记得修改别处的MemWrite
+			MemWrite = MemWrite_wire; //= 1'b1;//记得修改别处的MemWrite
 			RF_wen = 1'b0;//记得修改别处的RF_wen信号
 			Address = Address_before_always;
 			if (!clk_past && clk && Mem_Req_Ack)//说明是上升沿
@@ -561,7 +566,7 @@ module mips_cpu(
 		end
 		`LD:
 		begin
-			MemRead = 1'b1;//记得修改别处的MemRead
+			MemRead = MemRead_wire; //=1'b1;//记得修改别处的MemRead
 			RF_wen = 1'b0;//记得修改别处的RF_wen信号
 			Address = Address_before_always;
 			if (!clk_past && clk && Mem_Req_Ack)//说明是上升沿
@@ -583,7 +588,7 @@ module mips_cpu(
 		end
 		`WB:
 		begin
-			RF_wen = 1'b1;
+			RF_wen = RF_wen_before_always;//= 1'b1;
 			Address = Address_before_always;
 		end
 		default:
@@ -605,17 +610,17 @@ module mips_cpu(
 	begin
 		if (rst) 
 		begin
-			// reset
-			
+			PC_reg <= 32'b0;// reset
 		end
 		else 
 		begin
-			
+			if (cpu_status_now == `ID_EX)
+				PC_reg <= PC_input_after_jump;
 		end
 	end
 
 
-
+	
 
 
 

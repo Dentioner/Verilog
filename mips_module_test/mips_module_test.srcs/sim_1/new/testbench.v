@@ -37,6 +37,7 @@ module testbench();
 	reg clk;
 	wire [1:0] test_signal;
 	reg [1:0] test_signal_r;
+	wire testcase;
 
 	localparam justtest = 32'b1;
 initial
@@ -73,5 +74,7 @@ begin
 end
 	shifter s1(funct, shamt, alu_a_raw, alu_b_raw, alu_a, alu_b);
 	//shifter_two s2(.shamt(shamt), .answer(answer));
+
+
 
 endmodule
