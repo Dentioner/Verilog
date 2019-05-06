@@ -453,6 +453,7 @@ module mips_cpu(
 		if (rst) 
 		begin
 			cpu_status_now <= `IF; // reset
+			cpu_status_next <= `IF;
 			Address <= Address_before_always;
 			Instruction_Register <= 0;
 		end
@@ -465,7 +466,7 @@ module mips_cpu(
 
 	always @* //always2
 	begin
-		cpu_status_next = cpu_status_now;//default
+		//cpu_status_next = cpu_status_now;//default
 
 		case(cpu_status_now)
 		`IF:
