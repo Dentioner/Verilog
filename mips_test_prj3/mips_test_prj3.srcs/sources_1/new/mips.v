@@ -467,11 +467,34 @@ module mips_cpu(
 
 		case(cpu_status_now)
 		`IF:
-			if (Inst_Req_Ack)
-				cpu_status_next = `IW;
+		begin
+			if (rst)
+			begin
+				Inst_Req_Valid = 1'b0;
+				Inst_Ack = 1'b1;
+				MemWrite = 1'b0;
+				MemRead = 1'b0;
+				Read_data_Ack = 1'b0;
+			end
+			else
+			begin
+				Inst_Req_Valid = 1'b1;
+				Inst_Ack = 1'b0;
+				if (Inst_Req_Ack)
+					cpu_status_next = `IW;
+			end
+			RF_wen_reg = 1'b0;//记得修改别处的RF_wen信号
+			//Address = Address_before_always;
+		end
 		`IW:
+		begin
 			if (Inst_Valid)
 				cpu_status_next = `ID_EX;
+			Inst_Ack = 1'b1;
+			RF_wen_reg = 1'b0;//记得修改别处的RF_wen信号
+			//Address = Address_before_always;
+			
+		end
 		`ID_EX:
 		begin
 			if (Instruction[31:26] == `lb_in  ||//Load指令
@@ -500,119 +523,48 @@ module mips_cpu(
 			else
 				cpu_status_next = `WB;//其他指令
 
+			RF_wen_reg = RF_wen_before_always;	
+
 		end
 
 		`ST:
+		begin
 			if (Mem_Req_Ack)
 				cpu_status_next = `IF;
-
-		`LD:
-			if (Mem_Req_Ack)
-				cpu_status_next = `RDW;
-
-		`RDW:
-			if (Read_data_Valid)
-				cpu_status_next = `WB;
-
-		`WB:
-			cpu_status_next = `IF;
-
-		default:
-			cpu_status_next = `IF;
-
-		endcase
-	end
-
-	always @* //另一个always2，这个里面的东西是否正常有待考虑
-	begin
-		case(cpu_status_now)
-		`IF:
-		begin
-			if (rst)
-			begin
-				Inst_Req_Valid = 1'b0;
-				Inst_Ack = 1'b1;
-				MemWrite = 1'b0;
-				MemRead = 1'b0;
-				Read_data_Ack = 1'b0;
-			end
-			else
-			begin
-				Inst_Req_Valid = 1'b1;
-				Inst_Ack = 1'b0;
-			end
-			RF_wen_reg = 1'b0;//记得修改别处的RF_wen信号
-			//Address = Address_before_always;
-			if (!clk_past && clk && Inst_Req_Ack)//说明是上升沿
-			begin
-				Inst_Req_Valid = 1'b0;
-			end	
-		end
-		`IW:
-		begin
-			Inst_Ack = 1'b1;
-			RF_wen_reg = 1'b0;//记得修改别处的RF_wen信号
-			//Address = Address_before_always;
-			if (!clk_past && clk && Inst_Valid)//说明是上升沿
-			begin
-				//Instruction = Instruction;
-				Inst_Ack = 1'b0;	
-			end	
-		end
-		`ID_EX:
-		begin
-
-			RF_wen_reg = RF_wen_before_always; //=1'b1;//记得修改别处的RF_wen信号
-			//if (Instruction[31:26] == `jal_in ||
-			//	(Instruction[31:26] == `R_type_in && funct == `jalr_funct))
-			//	Address = 31;//记得修改别处的Address
-			//else //别的情况下address怎么变
-			//	Address = Address_before_always;
-		end
-		`ST:
-		begin
 			MemWrite = MemWrite_wire; //= 1'b1;//记得修改别处的MemWrite
 			RF_wen_reg = 1'b0;//记得修改别处的RF_wen信号
 			//Address = Address_before_always;
-			if (!clk_past && clk && Mem_Req_Ack)//说明是上升沿
-			begin
-				MemWrite = 1'b0;
-				
-			end	
+
 		end
 		`LD:
 		begin
+			if (Mem_Req_Ack)
+				cpu_status_next = `RDW;
 			MemRead = MemRead_wire; //=1'b1;//记得修改别处的MemRead
 			RF_wen_reg = 1'b0;//记得修改别处的RF_wen信号
 			//Address = Address_before_always;
-			if (!clk_past && clk && Mem_Req_Ack)//说明是上升沿
-			begin
-				
-				MemRead = 1'b0;	
-			end	
+			
+
 		end
 		`RDW:
 		begin
+			if (Read_data_Valid)
+				cpu_status_next = `WB;
 			Read_data_Ack = 1'b1;
 			RF_wen_reg = 1'b0;//记得修改别处的RF_wen信号
 			//Address = Address_before_always;
-			if (!clk_past && clk && Read_data_Valid)//说明是上升沿
-			begin
-				Read_data_Ack = 1'b0;
-				
-			end
+			
 		end
 		`WB:
 		begin
-			RF_wen_reg = RF_wen_before_always;//= 1'b1;
-			//Address = Address_before_always;
+			cpu_status_next = `IF;
+			RF_wen_reg = RF_wen_before_always;
 		end
 		default:
-			;//暂时没啥操作
+			cpu_status_next = `IF;
+
 		endcase
 	end
-
-
 
 
 	always @(posedge clk or posedge rst) //always3
@@ -624,7 +576,25 @@ module mips_cpu(
 		end
 		else 
 		begin
-			if (cpu_status_now == `ID_EX)
+			case(cpu_status_now)
+			`IF:
+			begin
+				if (Inst_Req_Ack)
+				begin
+					Inst_Req_Valid <= 1'b0;
+				end	
+			end
+			`IW:
+			begin
+				if (!clk_past && clk && Inst_Valid)//说明是上升沿
+				begin
+				//Instruction = Instruction;
+					Inst_Ack <= 1'b0;	
+				end	
+			end
+
+
+			`ID_EX:
 			begin
 				PC_reg <= PC_input_after_jump;		
 				if (Instruction[31:26] == `jal_in ||
@@ -633,10 +603,35 @@ module mips_cpu(
 				else //别的情况下address怎么变
 					Address <= Address_before_always;
 			end
-			else 
+			`ST:
 			begin
-				Address <= Address_before_always;	
-			end	
+				if (Mem_Req_Ack)//说明是上升沿
+				begin
+					MemWrite <= 1'b0;				
+				end	
+			end
+			`LD:
+			begin
+				if (Mem_Req_Ack)//说明是上升沿
+				begin
+				
+					MemRead <= 1'b0;	
+				end	
+			end
+			`RDW:
+			begin
+				if (Read_data_Valid)//说明是上升沿
+				begin
+					Read_data_Ack <= 1'b0;
+				
+				end
+			end
+			`WB:
+				;
+			default:
+				;
+
+			endcase
 
 		end
 	end
