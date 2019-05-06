@@ -217,7 +217,7 @@ module mips_cpu(
 	reg [2:0] cpu_status_now;
 	reg [2:0] cpu_status_next;
 	//reg clk_past;
-	reg PC_reg;
+	reg [31:0] PC_reg;
 	reg RF_wen_reg;
 	reg [31:0] Instruction_Register;
 
