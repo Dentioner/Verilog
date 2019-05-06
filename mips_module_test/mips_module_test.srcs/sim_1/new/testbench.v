@@ -38,6 +38,8 @@ module testbench();
 	wire [1:0] test_signal;
 	reg [1:0] test_signal_r;
 	wire testcase;
+	reg clk_past;
+	reg [31:0] counter;
 
 	localparam justtest = 32'b1;
 initial
@@ -47,6 +49,7 @@ begin
 	alu_b_raw = {$random};//32'b00000000_00000000_00000000_00000000;
 	clk = 1'b0;
 	funct = `sll_funct;
+	counter = 0;
 	#20 funct = `srl_funct;
 	#20 funct = `sra_funct;
 	#20 funct = `sllv_funct;
@@ -72,6 +75,16 @@ begin
 	endcase
 
 end
+
+	always @(clk)
+		clk_past <= ~clk;//人为实现上升沿
+
+always @*
+begin
+	if (clk && !clk_past)
+	counter = counter + 1; 
+end
+
 	shifter s1(funct, shamt, alu_a_raw, alu_b_raw, alu_a, alu_b);
 	//shifter_two s2(.shamt(shamt), .answer(answer));
 

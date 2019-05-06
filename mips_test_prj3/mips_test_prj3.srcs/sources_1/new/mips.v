@@ -252,14 +252,14 @@ module mips_cpu(
 							(Instruction_Register[31:26] == `lhu_in)   ?`lhu_out   :(
 							(Instruction_Register[31:26] == `lwl_in)   ?`lwl_out   :(
 							(Instruction_Register[31:26] == `lwr_in)   ?`lwr_out   :(
-							(Instruction_Register[31:26] == `ori_in)	  ?`ori_out	  :(
-							(Instruction_Register[31:26] == `sb_in)	  ?`sb_out	  :(
-							(Instruction_Register[31:26] == `sh_in)	  ?`sh_out	  :(
-							(Instruction_Register[31:26] == `swl_in)	  ?`swl_out	  :(
-							(Instruction_Register[31:26] == `swr_in)	  ?`swr_out   :(
+							(Instruction_Register[31:26] == `ori_in)   ?`ori_out   :(
+							(Instruction_Register[31:26] == `sb_in)	   ?`sb_out	   :(
+							(Instruction_Register[31:26] == `sh_in)	   ?`sh_out	   :(
+							(Instruction_Register[31:26] == `swl_in)   ?`swl_out   :(
+							(Instruction_Register[31:26] == `swr_in)   ?`swr_out   :(
 							(Instruction_Register[31:26] == `xori_in)  ?`xori_out  :(
 
-							(Instruction_Register[31:26] == `j_in)	  ?`j_out	  :11'b1000000000))))))))))))))))))))))))));
+							(Instruction_Register[31:26] == `j_in)	   ?`j_out	   :11'b1000000000))))))))))))))))))))))))));
 
 	assign DonotJump 	 = control_data[10];
 	assign RegDst    	 = control_data[9];
@@ -446,7 +446,7 @@ module mips_cpu(
 //下面是状态机
 
 	always @(clk)
-		clk_past <= clk;//人为实现上升沿
+		clk_past <= ~clk;//人为实现上升沿
 
 	always @(posedge clk or posedge rst) //always1
 	begin
@@ -461,7 +461,7 @@ module mips_cpu(
 	end
 
 
-	always @*//always2
+	always @* //always2
 	begin
 		cpu_status_next = cpu_status_now;//default
 
@@ -523,12 +523,21 @@ module mips_cpu(
 		endcase
 	end
 
-	always @*//另一个always2，这个里面的东西是否正常有待考虑
+	always @* //另一个always2，这个里面的东西是否正常有待考虑
 	begin
 		case(cpu_status_now)
 		`IF:
 		begin
-			Inst_Req_Valid = 1'b1;
+			if (rst)
+			begin
+				Inst_Req_Valid = 1'b0;
+				Inst_Ack = 1'b1;
+			end
+			else
+			begin
+				Inst_Req_Valid = 1'b1;
+				Inst_Ack = 1'b0;
+			end
 			RF_wen_reg = 1'b0;//记得修改别处的RF_wen信号
 			//Address = Address_before_always;
 			if (!clk_past && clk && Inst_Req_Ack)//说明是上升沿
@@ -549,6 +558,7 @@ module mips_cpu(
 		end
 		`ID_EX:
 		begin
+
 			RF_wen_reg = RF_wen_before_always; //=1'b1;//记得修改别处的RF_wen信号
 			//if (Instruction[31:26] == `jal_in ||
 			//	(Instruction[31:26] == `R_type_in && funct == `jalr_funct))
@@ -599,14 +609,7 @@ module mips_cpu(
 		endcase
 	end
 
-	always @*//控制复位信号有关的
-	begin
-		if (reset)
-		begin
-			Inst_Req_Valid = 1'b0;
-			Inst_Ack = 1'b0;
-		end
-	end
+
 
 
 	always @(posedge clk or posedge rst) //always3
@@ -614,6 +617,7 @@ module mips_cpu(
 		if (rst) 
 		begin
 			PC_reg <= 32'b0;// reset
+			Address <= Address_before_always;
 		end
 		else 
 		begin
@@ -625,6 +629,10 @@ module mips_cpu(
 					Address <= 31;
 				else //别的情况下address怎么变
 					Address <= Address_before_always;
+			end
+			else 
+			begin
+				Address <= Address_before_always;	
 			end	
 
 		end
