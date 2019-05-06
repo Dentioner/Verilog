@@ -217,7 +217,7 @@ module mips_cpu(
 	reg [2:0] cpu_status_now;
 	reg [2:0] cpu_status_next;
 	//reg clk_past;
-	reg PC_reg;
+	reg [31:0] PC_reg;
 	reg RF_wen_reg;
 	reg [31:0] Instruction_Register;
 
@@ -453,7 +453,7 @@ module mips_cpu(
 		if (rst) 
 		begin
 			cpu_status_now <= `IF; // reset
-			cpu_status_next <= `IF;
+			//cpu_status_next <= `IF;
 			Address <= Address_before_always;
 			Instruction_Register <= 0;
 		end
@@ -466,18 +466,19 @@ module mips_cpu(
 
 	always @* //always2
 	begin
-		//cpu_status_next = cpu_status_now;//default
+		cpu_status_next = cpu_status_now;//default
 
 		case(cpu_status_now)
 		`IF:
 		begin
 			if (rst)
 			begin
-				Inst_Req_Valid = 1'b0;
-				Inst_Ack = 1'b1;
-				MemWrite = 1'b0;
-				MemRead = 1'b0;
-				Read_data_Ack = 1'b0;
+				//Inst_Req_Valid = 1'b0;
+				//Inst_Ack = 1'b1;
+				//MemWrite = 1'b0;
+				//MemRead = 1'b0;
+				//Read_data_Ack = 1'b0;
+				;
 			end
 			else
 			begin
