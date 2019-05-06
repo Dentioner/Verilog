@@ -467,16 +467,8 @@ module mips_cpu(
 	always @* //always2
 	begin
 		cpu_status_next = cpu_status_now;//default
-		if (rst)
-		begin
-			Inst_Req_Valid = 1'b0;
-			Inst_Ack = 1'b1;
-			MemWrite = 1'b0;
-			MemRead = 1'b0;
-			Read_data_Ack = 1'b0;
-		end
-		else 
-		begin
+		 
+		
 			case(cpu_status_now)
 			`IF:
 			begin
@@ -485,11 +477,7 @@ module mips_cpu(
 				//Inst_Ack = 1'b0;
 				if (Inst_Req_Ack)
 					cpu_status_next = `IW;
-				else
-				begin
-					Inst_Req_Valid = 1'b1;
-					Inst_Ack = 1'b0;//在这里加这个是为了避免和always3里面的赋值出现竞争
-				end
+				
 				
 				RF_wen_reg = 1'b0;//记得修改别处的RF_wen信号
 				//Address = Address_before_always;
@@ -574,7 +562,7 @@ module mips_cpu(
 				cpu_status_next = `IF;
 
 			endcase
-		end
+		
 			
 	end
 
@@ -584,6 +572,11 @@ module mips_cpu(
 		if (rst) 
 		begin
 			PC_reg <= 32'b0;// reset
+			Inst_Req_Valid <= 1'b0;
+			Inst_Ack <= 1'b1;
+			MemWrite <= 1'b0;
+			MemRead <= 1'b0;
+			Read_data_Ack <= 1'b0;
 			//Address <= Address_before_always;
 		end
 		else 
@@ -595,6 +588,11 @@ module mips_cpu(
 				begin
 					Inst_Req_Valid <= 1'b0;
 					Inst_Ack <= 1'b1;
+				end
+				else
+				begin
+					Inst_Req_Valid <= 1'b1;
+					Inst_Ack <= 1'b0;//在这里加这个是为了避免和always3里面的赋值出现竞争
 				end	
 			end
 			`IW:
