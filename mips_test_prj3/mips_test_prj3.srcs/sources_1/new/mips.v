@@ -465,37 +465,28 @@ module mips_cpu(
 	end
 
 
-	always @* //always2
+	always @* //always2_for_nextstatus
 	begin
 		cpu_status_next = cpu_status_now;//default
 		 
 		
-			case(cpu_status_now)
+		case(cpu_status_now)
 			`IF:
 			begin
-								
-				//Inst_Req_Valid = 1'b1;
-				//Inst_Ack = 1'b0;
 				if (Inst_Req_Ack)
 					cpu_status_next = `IW;
-				
-				
-				RF_wen_reg = 1'b0;//记得修改别处的RF_wen信号
-				//Address = Address_before_always;
+				else 
+					cpu_status_next = cpu_status_now;
 			end
 			`IW:
 			begin
 				if (Inst_Valid)
 					cpu_status_next = `ID_EX;
-				//Inst_Ack = 1'b1;
-				RF_wen_reg = 1'b0;//记得修改别处的RF_wen信号
-				//Address = Address_before_always;
-				
+				else 
+					cpu_status_next = cpu_status_now;
 			end
 			`ID_EX:
 			begin
-				
-
 				if (Instruction_Register[31:26] == `lb_in  ||//Load指令
 					Instruction_Register[31:26] == `lh_in  ||
 					Instruction_Register[31:26] == `lwl_in ||
@@ -522,6 +513,58 @@ module mips_cpu(
 				else
 					cpu_status_next = `WB;//其他指令
 
+			end
+
+			`ST:
+			begin
+				if (Mem_Req_Ack)
+					cpu_status_next = `IF;
+				else 
+					cpu_status_next = cpu_status_now;
+
+			end
+			`LD:
+			begin
+				if (Mem_Req_Ack)
+					cpu_status_next = `RDW;
+				else 
+					cpu_status_next = cpu_status_now;
+			end
+			`RDW:
+			begin
+				if (Read_data_Valid)
+				begin
+					cpu_status_next = `WB;
+				end
+				else 
+					cpu_status_next = cpu_status_now;
+				
+			end
+			`WB:
+			begin
+				cpu_status_next = `IF;
+				
+			end
+			default:
+			begin
+				cpu_status_next = `IF;
+				
+			end
+		endcase	
+	end
+
+
+	always @* //always2_for_RFwen
+	begin
+		RF_wen_reg = 1'b0;//default
+			case(cpu_status_now)
+			`IF:	
+				RF_wen_reg = 1'b0;
+			`IW:
+				RF_wen_reg = 1'b0;//记得修改别处的RF_wen信号
+			`ID_EX:
+			begin
+
 				if (Instruction_Register[31:26] == `jal_in || (
 					Instruction_Register[31:26] == `R_type_in && funct == `jalr_funct))
 				begin
@@ -534,48 +577,21 @@ module mips_cpu(
 			end
 
 			`ST:
-			begin
-				if (Mem_Req_Ack)
-					cpu_status_next = `IF;
-				//MemWrite = MemWrite_wire; //= 1'b1;//记得修改别处的MemWrite
-				RF_wen_reg = 1'b0;//记得修改别处的RF_wen信号
-				//Address = Address_before_always;
-
-			end
-			`LD:
-			begin
-				if (Mem_Req_Ack)
-					cpu_status_next = `RDW;
-				//MemRead = MemRead_wire; //=1'b1;//记得修改别处的MemRead
-				RF_wen_reg = 1'b0;//记得修改别处的RF_wen信号
-				//Address = Address_before_always;
-				
-
-			end
+				RF_wen_reg = 1'b0;
+			`LD:				
+				RF_wen_reg = 1'b0;
 			`RDW:
-			begin
-				if (Read_data_Valid)
-				begin
-					cpu_status_next = `WB;
-					Read_data_reg = Read_data;
-				end
-				//Read_data_Ack = 1'b1;
 				RF_wen_reg = 1'b0;//记得修改别处的RF_wen信号
 				//Address = Address_before_always;
-				
-			end
 			`WB:
-			begin
-				cpu_status_next = `IF;
-				RF_wen_reg = RF_wen_before_always;
-			end
-			default:
-				cpu_status_next = `IF;
-
-			endcase
-		
-			
+				RF_wen_reg = RF_wen_before_always;			
+			default:				
+				RF_wen_reg = 1'b0;			
+			endcase	
 	end
+
+
+
 
 
 	always @(posedge clk or posedge rst) //always3
@@ -589,6 +605,7 @@ module mips_cpu(
 			MemRead <= 1'b0;
 			Read_data_Ack <= 1'b0;
 			Instruction_Register <= 0;
+			Read_data_reg <= 0;
 			//Address <= Address_before_always;
 		end
 		else 
@@ -656,7 +673,7 @@ module mips_cpu(
 				if (Read_data_Valid)//说明是上升沿
 				begin
 					Read_data_Ack <= 1'b0;
-					
+					Read_data_reg <= Read_data;
 				end
 			end
 			`WB:
