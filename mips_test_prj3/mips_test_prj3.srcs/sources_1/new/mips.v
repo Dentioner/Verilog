@@ -220,6 +220,7 @@ module mips_cpu(
 	reg [31:0] PC_reg;
 	reg RF_wen_reg;
 	reg [31:0] Instruction_Register;
+	reg [31:0] Read_data_reg;
 
 	wire [31:0] Address_before_always;
 	wire RF_wen_before_always;
@@ -324,29 +325,29 @@ module mips_cpu(
 						(Instruction_Register[31:26] == `lb_in || Instruction_Register[31:26] == `lh_in)?Read_data_symbol_extension:(
 						(Instruction_Register[31:26] == `lbu_in || Instruction_Register[31:26] == `lhu_in)?Read_data_logical_extension:(
 						(Instruction_Register[31:26] == `lwl_in)?(
-							(vAddr10 == 2'b00)?{Read_data[7:0], RF_rdata2[23:0]}:(
-							(vAddr10 == 2'b01)?{Read_data[15:0], RF_rdata2[15:0]}:(
-							(vAddr10 == 2'b10)?{Read_data[23:0], RF_rdata2[7:0]}:Read_data))):(
+							(vAddr10 == 2'b00)?{Read_data_reg[7:0], RF_rdata2[23:0]}:(
+							(vAddr10 == 2'b01)?{Read_data_reg[15:0], RF_rdata2[15:0]}:(
+							(vAddr10 == 2'b10)?{Read_data_reg[23:0], RF_rdata2[7:0]}:Read_data_reg))):(
 						(Instruction_Register[31:26] == `lwr_in)?(
-							(vAddr10 == 2'b00)?Read_data:(
-							(vAddr10 == 2'b01)?{RF_rdata2[31:24], Read_data[31:8]}:(
-							(vAddr10 == 2'b10)?{RF_rdata2[31:16], Read_data[31:16]}:{RF_rdata2[31:8], Read_data[31:24]}))):Read_data))
+							(vAddr10 == 2'b00)?Read_data_reg:(
+							(vAddr10 == 2'b01)?{RF_rdata2[31:24], Read_data_reg[31:8]}:(
+							(vAddr10 == 2'b10)?{RF_rdata2[31:16], Read_data_reg[31:16]}:{RF_rdata2[31:8], Read_data_reg[31:24]}))):Read_data_reg))
 						)):alu1_result);//先判断是否是直接将PC+8塞进去的指令，然后再判断别的
 
 	assign Read_data_symbol_extension = (Instruction_Register[31:26] == `lb_in)?(
-											(vAddr10 == 2'b00)?{{24{Read_data[7]}}, Read_data[7:0]}:(
-											(vAddr10 == 2'b01)?{{24{Read_data[15]}}, Read_data[15:8]}:(
-											(vAddr10 == 2'b10)?{{24{Read_data[23]}}, Read_data[23:16]}:{{24{Read_data[31]}}, Read_data[31:24]}))):(
+											(vAddr10 == 2'b00)?{{24{Read_data_reg[7]}}, Read_data_reg[7:0]}:(
+											(vAddr10 == 2'b01)?{{24{Read_data_reg[15]}}, Read_data_reg[15:8]}:(
+											(vAddr10 == 2'b10)?{{24{Read_data_reg[23]}}, Read_data_reg[23:16]}:{{24{Read_data_reg[31]}}, Read_data_reg[31:24]}))):(
 										(Instruction_Register[31:26] == `lh_in)?(
-											(vAddr10[1] == 1'b1)?{{16{Read_data[31]}}, Read_data[31:16]}:{{16{Read_data[15]}}, Read_data[15:0]}):Read_data);//将8位/16位Read_data符号扩展
+											(vAddr10[1] == 1'b1)?{{16{Read_data_reg[31]}}, Read_data_reg[31:16]}:{{16{Read_data_reg[15]}}, Read_data_reg[15:0]}):Read_data_reg);//将8位/16位Read_data符号扩展
 										
 
 	assign Read_data_logical_extension = (Instruction_Register[31:26] == `lbu_in)?(
-											(vAddr10 == 2'b00)?{24'b0, Read_data[7:0]}:(
-											(vAddr10 == 2'b01)?{24'b0, Read_data[15:8]}:(
-											(vAddr10 == 2'b10)?{24'b0, Read_data[23:16]}:{24'b0, Read_data[31:24]}))):(
+											(vAddr10 == 2'b00)?{24'b0, Read_data_reg[7:0]}:(
+											(vAddr10 == 2'b01)?{24'b0, Read_data_reg[15:8]}:(
+											(vAddr10 == 2'b10)?{24'b0, Read_data_reg[23:16]}:{24'b0, Read_data_reg[31:24]}))):(
 										(Instruction_Register[31:26] == `lhu_in)?(
-											(vAddr10[1] == 1'b1)?{16'b0, Read_data[31:16]}:{16'b0, Read_data[15:0]}):Read_data);//将8位/16位Read_data高位加0拓展为32位
+											(vAddr10[1] == 1'b1)?{16'b0, Read_data_reg[31:16]}:{16'b0, Read_data_reg[15:0]}):Read_data_reg);//将8位/16位Read_data高位加0拓展为32位
 
 
 	//下面几个assign是为了实现lwl/lwr而设置的
@@ -455,7 +456,7 @@ module mips_cpu(
 			cpu_status_now <= `IF; // reset
 			//cpu_status_next <= `IF;
 			Address <= Address_before_always;
-			Instruction_Register <= 0;
+			
 		end
 		else 
 		begin
@@ -554,7 +555,10 @@ module mips_cpu(
 			`RDW:
 			begin
 				if (Read_data_Valid)
+				begin
 					cpu_status_next = `WB;
+					Read_data_reg = Read_data;
+				end
 				//Read_data_Ack = 1'b1;
 				RF_wen_reg = 1'b0;//记得修改别处的RF_wen信号
 				//Address = Address_before_always;
@@ -584,6 +588,7 @@ module mips_cpu(
 			MemWrite <= 1'b0;
 			MemRead <= 1'b0;
 			Read_data_Ack <= 1'b0;
+			Instruction_Register <= 0;
 			//Address <= Address_before_always;
 		end
 		else 
