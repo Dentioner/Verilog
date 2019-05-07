@@ -521,8 +521,15 @@ module mips_cpu(
 				else
 					cpu_status_next = `WB;//其他指令
 
-				RF_wen_reg = RF_wen_before_always;	
-
+				if (Instruction_Register[31:26] == `jal_in || (
+					Instruction_Register[31:26] == `R_type_in && funct == `jalr_funct))
+				begin
+					RF_wen_reg = RF_wen_before_always;	
+				end
+				else 
+				begin
+					RF_wen_reg = 1'b0;					
+				end
 			end
 
 			`ST:
