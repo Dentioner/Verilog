@@ -455,7 +455,7 @@ module mips_cpu(
 		begin
 			cpu_status_now <= `IF; // reset
 			//cpu_status_next <= `IF;
-			Address <= Address_before_always;
+			
 			
 		end
 		else 
@@ -611,6 +611,7 @@ module mips_cpu(
 			Read_data_Ack <= 1'b0;
 			Instruction_Register <= 0;
 			Read_data_reg <= 0;
+			Address <= Address_before_always;
 			//Address <= Address_before_always;
 		end
 		else 
@@ -641,11 +642,11 @@ module mips_cpu(
 			`ID_EX:
 			begin
 				PC_reg <= PC_input_after_jump;		
-				if (Instruction_Register[31:26] == `jal_in ||
-				(Instruction_Register[31:26] == `R_type_in && funct == `jalr_funct))
-					Address <= 31;
-				else //别的情况下address怎么变
-					Address <= Address_before_always;
+				//if (Instruction_Register[31:26] == `jal_in ||
+				//(Instruction_Register[31:26] == `R_type_in && funct == `jalr_funct))
+					//Address <= 31;
+				//else //别的情况下address怎么变
+				Address <= Address_before_always;
 				case(cpu_status_next)
 				`ST:
 					MemWrite <= MemWrite_wire;
