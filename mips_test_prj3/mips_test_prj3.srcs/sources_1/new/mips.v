@@ -584,7 +584,12 @@ module mips_cpu(
 				RF_wen_reg = 1'b0;//记得修改别处的RF_wen信号
 				//Address = Address_before_always;
 			`WB:
-				RF_wen_reg = RF_wen_before_always;			
+				begin
+					if (Instruction_Register[31:26] == `R_type_in && funct == `jalr_funct)
+						RF_wen_reg = 1'b0;
+					else
+						RF_wen_reg = RF_wen_before_always;			
+				end
 			default:				
 				RF_wen_reg = 1'b0;			
 			endcase	
