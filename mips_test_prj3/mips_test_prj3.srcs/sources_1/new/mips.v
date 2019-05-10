@@ -49,6 +49,7 @@
 `define beq_in     6'b000100
 `define bne_in     6'b000101
 `define blez_in    6'b000110
+`define bgtz_in	   6'b000111
 `define addiu_in   6'b001001
 `define slti_in	   6'b001010
 `define sltiu_in   6'b001011
@@ -79,6 +80,7 @@
 `define bgez_out	11'b10000001110
 `define blez_out	11'b10000001110
 `define bltz_out	11'b10000001110
+`define bgtz_out	11'b10000001110
 `define sb_out		11'b10100010010
 `define sh_out		11'b10100010010
 `define swl_out		11'b10100010010
@@ -247,6 +249,7 @@ module mips_cpu(
 							(Instruction_Register[31:26] == `bgez_in)  ?`bgez_out  :(
 							(Instruction_Register[31:26] == `blez_in)  ?`blez_out  :(
 							(Instruction_Register[31:26] == `bltz_in)  ?`bltz_out  :(
+							(Instruction_Register[31:26] == `bgtz_in)  ?`bgtz_out  :(
 							(Instruction_Register[31:26] == `lb_in)    ?`lb_out    :(
 							(Instruction_Register[31:26] == `lbu_in)   ?`lbu_out   :(
 							(Instruction_Register[31:26] == `lh_in)    ?`lh_out    :(
@@ -260,7 +263,7 @@ module mips_cpu(
 							(Instruction_Register[31:26] == `swr_in)   ?`swr_out   :(
 							(Instruction_Register[31:26] == `xori_in)  ?`xori_out  :(
 
-							(Instruction_Register[31:26] == `j_in)	   ?`j_out	  :11'b1000000000))))))))))))))))))))))))));
+							(Instruction_Register[31:26] == `j_in)	   ?`j_out	  :11'b1000000000)))))))))))))))))))))))))));
 
 	assign DonotJump 	 = control_data[10];
 	assign RegDst    	 = control_data[9];
@@ -312,8 +315,9 @@ module mips_cpu(
 	assign Zero_input_to_alu2 = (Instruction_Register[31:26] == `bne_in)?~Zero_raw:(//Zero_raw对于bne需要处理一下
 								(Instruction_Register[31:26] == `bgez_in && Instruction_Register[20:16] == `regimm_bgez)?~RF_rdata1[31]:(
 								(Instruction_Register[31:26] == `bltz_in && Instruction_Register[20:16] == `regimm_bltz)?RF_rdata1[31]:(
-								(Instruction_Register[31:26] == `blez_in)?(RF_rdata1[31]|Zero_raw):
-									Zero_raw)));
+								(Instruction_Register[31:26] == `blez_in)?(RF_rdata1[31]|Zero_raw):(
+								(Instruction_Register[31:26] == `bgtz_in)?((!RF_raddr1[31])&(!Zero_raw)):
+									Zero_raw))));
 	assign PC_input_before_jump = (Branch_after_AND == 1)?alu2_result:add_result;
 
 //下面这个是样例图左边的加法器
@@ -505,8 +509,9 @@ module mips_cpu(
 				else if (Instruction_Register[31:26] == `bgez_in ||//跳转指令
 						 Instruction_Register[31:26] == `blez_in ||
 						 Instruction_Register[31:26] == `bltz_in ||
+						 Instruction_Register[31:26] == `bgtz_in ||
 						 Instruction_Register[31:26] == `bne_in  ||
-						 Instruction_Register[31:26] == `beq_in  ||
+						 Instruction_Register[31:26] == `beq_in  ||						 
 						 Instruction_Register[31:26] == `j_in    ||
 						 Instruction_Register[31:26] == `jal_in)
 					cpu_status_next = `IF;
