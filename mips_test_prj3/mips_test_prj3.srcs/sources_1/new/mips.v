@@ -449,7 +449,7 @@ module mips_cpu(
 	//always @(clk)
 		//clk_past <= ~clk;//人为实现上升沿
 
-	always @(posedge clk or posedge rst) //always1
+	always @(posedge clk) //always1
 	begin
 		if (rst) 
 		begin
@@ -599,7 +599,7 @@ module mips_cpu(
 
 
 
-	always @(posedge clk or posedge rst) //always3
+	always @(posedge clk) //always3
 	begin
 		if (rst) 
 		begin
