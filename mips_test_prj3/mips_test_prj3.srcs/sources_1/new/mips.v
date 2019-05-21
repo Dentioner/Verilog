@@ -316,7 +316,7 @@ module mips_cpu(
 								(Instruction_Register[31:26] == `bgez_in && Instruction_Register[20:16] == `regimm_bgez)?~RF_rdata1[31]:(
 								(Instruction_Register[31:26] == `bltz_in && Instruction_Register[20:16] == `regimm_bltz)?RF_rdata1[31]:(
 								(Instruction_Register[31:26] == `blez_in)?(RF_rdata1[31]|Zero_raw):(
-								(Instruction_Register[31:26] == `bgtz_in)?((!RF_raddr1[31])&(!Zero_raw)):
+								(Instruction_Register[31:26] == `bgtz_in)?((!RF_rdata1[31])&(!Zero_raw)):
 									Zero_raw))));
 	assign PC_input_before_jump = (Branch_after_AND == 1)?alu2_result:add_result;
 
