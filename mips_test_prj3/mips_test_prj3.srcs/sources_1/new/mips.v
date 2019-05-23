@@ -604,20 +604,24 @@ module mips_cpu(
 
 
 
-	always @(posedge clk) //always3
+	always @(posedge clk) //always3_for_PC
 	begin
 		if (rst) 
 		begin
-			PC_reg <= 32'b0;// reset
-			Inst_Req_Valid <= 1'b0;
-			Inst_Ack <= 1'b1;
-			MemWrite <= 1'b0;
-			MemRead <= 1'b0;
-			Read_data_Ack <= 1'b0;
-			Instruction_Register <= 0;
-			Read_data_reg <= 0;
-			Address <= Address_before_always;
-			//Address <= Address_before_always;
+			PC_reg <= 32'b0;// reset			
+		end
+		else 
+		begin
+			if (cpu_status_now == `ID_EX)
+				PC_reg <= PC_input_after_jump;
+		end
+	end
+
+	always @(posedge clk) //always3_for_Inst_Req_Valid
+	begin
+		if (rst) 
+		begin
+			Inst_Req_Valid <= 1'b0;// reset			
 		end
 		else 
 		begin
@@ -626,67 +630,28 @@ module mips_cpu(
 			begin
 				if (Inst_Req_Ack)
 				begin
-					Inst_Req_Valid <= 1'b0;
-					Inst_Ack <= 1'b1;
+					Inst_Req_Valid <= 1'b0;					
 				end
 				else
 				begin
-					Inst_Req_Valid <= 1'b1;
-					Inst_Ack <= 1'b0;//在这里加这个是为了避免和always3里面的赋值出现竞争
-				end	
-			end
-			`IW:
-			begin
-				if (Inst_Valid)//说明是上升沿
-				begin
-				//Instruction_Register = Instruction_Register;
-					Inst_Ack <= 1'b0;
-					Instruction_Register <= Instruction;	
+					Inst_Req_Valid <= 1'b1;					
 				end	
 			end
 			`ID_EX:
 			begin
-				PC_reg <= PC_input_after_jump;		
-				//if (Instruction_Register[31:26] == `jal_in ||
-				//(Instruction_Register[31:26] == `R_type_in && funct == `jalr_funct))
-					//Address <= 31;
-				//else //别的情况下address怎么变
-				Address <= Address_before_always;
-				case(cpu_status_next)
-				`ST:
-					MemWrite <= MemWrite_wire;
-				`LD:
-					MemRead <= MemRead_wire;
-				`WB:
-					;
-				default:
-					Inst_Req_Valid <= 1'b1;//`IF
-				endcase
+				if (cpu_status_next == `IF)
+				begin
+					Inst_Req_Valid <= 1'b1;
+				end
 			end
 			`ST:
 			begin
 				if (Mem_Req_Ack)//说明是上升沿
 				begin
-					MemWrite <= 1'b0;
 					Inst_Req_Valid <= 1'b1;				
 				end	
 			end
-			`LD:
-			begin
-				if (Mem_Req_Ack)//说明是上升沿
-				begin
-					Read_data_Ack <= 1'b1;
-					MemRead <= 1'b0;	
-				end	
-			end
-			`RDW:
-			begin
-				if (Read_data_Valid)//说明是上升沿
-				begin
-					Read_data_Ack <= 1'b0;
-					Read_data_reg <= Read_data;
-				end
-			end
+			
 			`WB:
 				Inst_Req_Valid <= 1'b1;
 			default:
@@ -695,9 +660,169 @@ module mips_cpu(
 		end
 	end
 
-	
+	always @(posedge clk) //always3_Inst_Ack
+	begin
+		if (rst) 
+		begin			
+			Inst_Ack <= 1'b1;			
+			//Address <= Address_before_always;
+		end
+		else 
+		begin
+			case(cpu_status_now)
+			`IF:
+			begin
+				if (Inst_Req_Ack)
+				begin					
+					Inst_Ack <= 1'b1;
+				end
+				else
+				begin					
+					Inst_Ack <= 1'b0;//在这里加这个是为了避免和always3里面的赋值出现竞争
+				end	
+			end
+			`IW:
+			begin
+				if (Inst_Valid)//说明是上升沿
+				begin
+				//Instruction_Register = Instruction_Register;
+					Inst_Ack <= 1'b0;						
+				end	
+			end			
+			default:
+				;
+			endcase
+		end
+	end
 
+	always @(posedge clk) //always3_for_MemWrite
+	begin
+		if (rst) 
+		begin
+			MemWrite <= 1'b0;			
+			//Address <= Address_before_always;
+		end
+		else 
+		begin
+			case(cpu_status_now)			
+			`ID_EX:
+			begin				
+				if (cpu_status_next == `ST)		
+					MemWrite <= MemWrite_wire;			
+			end
+			`ST:
+			begin
+				if (Mem_Req_Ack)//说明是上升沿
+				begin
+					MemWrite <= 1'b0;						
+				end	
+			end			
+			default:
+				;
+			endcase
+		end
+	end
 
+	always @(posedge clk) //always3_for_MemRead
+	begin
+		if (rst) 
+		begin
+			MemRead <= 1'b0;			
+			//Address <= Address_before_always;
+		end
+		else 
+		begin
+			case(cpu_status_now)			
+			`ID_EX:
+			begin				
+				if (cpu_status_next == `LD)
+					MemRead <= MemRead_wire;
+			end			
+			`LD:
+			begin
+				if (Mem_Req_Ack)//说明是上升沿
+				begin					
+					MemRead <= 1'b0;	
+				end	
+			end			
+			default:
+				;
+			endcase
+		end
+	end
+
+	always @(posedge clk) //always3_for_Read_data_Ack
+	begin
+		if (rst) 
+		begin			
+			Read_data_Ack <= 1'b0;			
+			//Address <= Address_before_always;
+		end
+		else 
+		begin
+			case(cpu_status_now)		
+			`LD:
+			begin
+				if (Mem_Req_Ack)//说明是上升沿
+				begin
+					Read_data_Ack <= 1'b1;						
+				end	
+			end
+			`RDW:
+			begin
+				if (Read_data_Valid)//说明是上升沿
+				begin
+					Read_data_Ack <= 1'b0;					
+				end
+			end
+			default:
+				;
+			endcase
+		end
+	end
+
+	always @(posedge clk) //always3_for_IR
+	begin
+		if (rst) 
+		begin			
+			Instruction_Register <= 0;			
+			//Address <= Address_before_always;
+		end
+		else 
+		begin
+			if (cpu_status_now == `IW)			
+				if (Inst_Valid)				
+					Instruction_Register <= Instruction;			
+		end
+	end
+
+	always @(posedge clk) //always3_for_Read_data_reg
+	begin
+		if (rst) 
+		begin			
+			Read_data_reg <= 0;			
+			//Address <= Address_before_always;
+		end
+		else 
+		begin
+			if (cpu_status_now == `RDW)			
+				if (Read_data_Valid)				
+					Read_data_reg <= Read_data;			
+		end
+	end
+
+	always @(posedge clk) //always3_for_address
+	begin
+		if (rst) 
+		begin			
+			Address <= Address_before_always;			
+		end
+		else 
+		begin
+			if (cpu_status_now == `ID_EX)			
+				Address <= Address_before_always;		
+		end
+	end
 
 
 endmodule
