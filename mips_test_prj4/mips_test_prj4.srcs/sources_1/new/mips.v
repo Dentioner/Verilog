@@ -1,5 +1,7 @@
 `timescale 10ns / 1ns
 
+//****************************************************************ALU_ctrl_code************************************************************************************************
+
 `define AND  4'b0000
 `define OR   4'b0001
 `define ADD  4'b0010
@@ -19,7 +21,58 @@
 `define slt_aluop_raw	 3'b111
 `define xor_aluop_raw	 3'b101
 
+//****************************************************************Other_type************************************************************************************************
+`define addiu_in   6'b001001
+`define slti_in	   6'b001010
+`define sltiu_in   6'b001011
+`define andi_in	   6'b001100
+`define ori_in	   6'b001101
+`define xori_in	   6'b001110
+`define lui_in	   6'b001111
 
+`define andi_out	11'b10101000000
+`define ori_out		11'b10101000001
+`define addiu_out   11'b10101000010
+`define lui_out		11'b10101000010
+`define xori_out	11'b10101000101
+`define slti_out	11'b10101000111
+`define sltiu_out	11'b10101000011
+
+//****************************************************************J/B_type************************************************************************************************
+
+
+`define bgez_in    6'b000001
+`define bltz_in	   6'b000001
+`define j_in	   6'b000010
+`define jal_in     6'b000011
+`define beq_in     6'b000100
+`define bne_in     6'b000101
+`define blez_in    6'b000110
+`define bgtz_in	   6'b000111
+
+`define regimm_bltz 5'b00000
+`define regimm_bgez 5'b00001
+
+`define B_type_out	11'b10000001110
+
+
+`define j_out		11'b00000000010
+`define jal_out		11'b00001000010
+
+
+/*
+`define beq_out     11'b10000001110//9'bx0x000101;
+`define bne_out     11'b10000001110//9'bx0x000101;
+`define bgez_out	11'b10000001110
+`define blez_out	11'b10000001110
+`define bltz_out	11'b10000001110
+`define bgtz_out	11'b10000001110
+*/
+
+
+//****************************************************************R_type************************************************************************************************
+
+`define R_type_in  6'b000000
 
 `define sll_funct  6'b000000
 `define srl_funct  6'b000010
@@ -41,22 +94,21 @@
 `define slt_funct  6'b101010
 `define sltu_funct 6'b101011
 
-`define R_type_in  6'b000000
-`define bgez_in    6'b000001
-`define bltz_in	   6'b000001
-`define j_in	   6'b000010
-`define jal_in     6'b000011
-`define beq_in     6'b000100
-`define bne_in     6'b000101
-`define blez_in    6'b000110
-`define bgtz_in	   6'b000111
-`define addiu_in   6'b001001
-`define slti_in	   6'b001010
-`define sltiu_in   6'b001011
-`define andi_in	   6'b001100
-`define ori_in	   6'b001101
-`define xori_in	   6'b001110
-`define lui_in	   6'b001111
+`define R_type_out  11'b11001000100
+
+
+//****************************************************************L_type************************************************************************************************
+`define L_type_in 		3'b100
+`define lb_in_funct		3'b000
+`define lh_in_funct		3'b001
+`define lwl_in_funct	3'b010
+`define lw_in_funct 	3'b011
+`define lbu_in_funct 	3'b100
+`define lhu_in_funct 	3'b101
+`define lwr_in_funct 	3'b110
+`define L_type_out		11'b10111100010
+
+/*
 `define lb_in	   6'b100000
 `define lh_in	   6'b100001
 `define lwl_in	   6'b100010
@@ -64,35 +116,8 @@
 `define lbu_in	   6'b100100
 `define lhu_in	   6'b100101
 `define lwr_in	   6'b100110
-`define sb_in	   6'b101000
-`define sh_in	   6'b101001
-`define swl_in	   6'b101010
-`define sw_in      6'b101011
-`define swr_in	   6'b101110
-
-`define regimm_bltz 5'b00000
-`define regimm_bgez 5'b00001
-
-`define j_out		11'b00000000010
-`define jal_out		11'b00001000010
-`define beq_out     11'b10000001110//9'bx0x000101;
-`define bne_out     11'b10000001110//9'bx0x000101;
-`define bgez_out	11'b10000001110
-`define blez_out	11'b10000001110
-`define bltz_out	11'b10000001110
-`define bgtz_out	11'b10000001110
-`define sb_out		11'b10100010010
-`define sh_out		11'b10100010010
-`define swl_out		11'b10100010010
-`define sw_out      11'b10100010010//9'bx1x001000;
-`define swr_out		11'b10100010010
-`define andi_out	11'b10101000000
-`define ori_out		11'b10101000001
-`define addiu_out   11'b10101000010
-`define lui_out		11'b10101000010
-`define xori_out	11'b10101000101
-`define slti_out	11'b10101000111
-`define sltiu_out	11'b10101000011
+*/
+/*
 `define lb_out		11'b10111100010
 `define lh_out		11'b10111100010
 `define lwl_out		11'b10111100010
@@ -100,7 +125,39 @@
 `define lbu_out		11'b10111100010
 `define lhu_out		11'b10111100010
 `define lwr_out		11'b10111100010
-`define R_type_out  11'b11001000100
+*/
+
+//****************************************************************S_type************************************************************************************************
+`define S_type_in 		3'b101
+`define sb_in_funct		3'b000
+`define sh_in_funct	   	3'b001
+`define swl_in_funct 	3'b010
+`define sw_in_funct 	3'b011
+`define swr_in_funct 	3'b110
+`define S_type_out		11'b10100010010
+/*
+`define sb_in	   6'b101000
+`define sh_in	   6'b101001
+`define swl_in	   6'b101010
+`define sw_in      6'b101011
+`define swr_in	   6'b101110
+*/
+/*
+`define sb_out		11'b10100010010
+`define sh_out		11'b10100010010
+`define swl_out		11'b10100010010
+`define sw_out      11'b10100010010//9'bx1x001000;
+`define swr_out		11'b10100010010
+*/
+
+
+
+
+
+
+
+
+//****************************************************************cpu_status************************************************************************************************
 
 `define IF 		3'b000
 `define IW 		3'b001
@@ -248,40 +305,42 @@ module mips_cpu(
 	wire MemWrite_wire;
 	wire [31:0] Instruction_for_submodule;
 
+
+//统一指令用
+	wire [2:0] in_funct;
+
+
+
+//干正事：
+
 	assign funct = Instruction_Register[5:0];
 	assign shamt = Instruction_Register[10:6];
+
+	assign in_funct = Instruction_Register[28:26];
 
 
 	//下面这堆assign是书上样例的“控制”模块
 	assign control_data =   (Instruction_Register[31:26] == `R_type_in)?`R_type_out:(
-							(Instruction_Register[31:26] == `lw_in)    ?`lw_out    :(
-							(Instruction_Register[31:26] == `sw_in)    ?`sw_out    :(
-							(Instruction_Register[31:26] == `beq_in)   ?`beq_out   :(
-							(Instruction_Register[31:26] == `addiu_in) ?`addiu_out :(
-							(Instruction_Register[31:26] == `bne_in)   ?`bne_out   :(
-							(Instruction_Register[31:26] == `jal_in)   ?`jal_out   :(
-							(Instruction_Register[31:26] == `lui_in)   ?`lui_out   :(
-							(Instruction_Register[31:26] == `slti_in)  ?`slti_out  :(
-							(Instruction_Register[31:26] == `sltiu_in) ?`sltiu_out :(
+							(Instruction_Register[31:29] == `L_type_in)?`L_type_out:(
+							(Instruction_Register[31:29] == `S_type_in)?`S_type_out:(			
+						
+							
+
+							(Instruction_Register[31:26] == `beq_in)   ?`B_type_out:(
+							(Instruction_Register[31:26] == `bgez_in)  ?`B_type_out:(
+							(Instruction_Register[31:26] == `blez_in)  ?`B_type_out:(
+							(Instruction_Register[31:26] == `bltz_in)  ?`B_type_out:(
+							(Instruction_Register[31:26] == `bgtz_in)  ?`B_type_out:(
+							(Instruction_Register[31:26] == `bne_in)   ?`B_type_out:(
+
+							(Instruction_Register[31:26] == `addiu_in) ?`addiu_out :(							
+							(Instruction_Register[31:26] == `lui_in)   ?`lui_out   :(							
 							(Instruction_Register[31:26] == `andi_in)  ?`andi_out  :(
-							(Instruction_Register[31:26] == `bgez_in)  ?`bgez_out  :(
-							(Instruction_Register[31:26] == `blez_in)  ?`blez_out  :(
-							(Instruction_Register[31:26] == `bltz_in)  ?`bltz_out  :(
-							(Instruction_Register[31:26] == `bgtz_in)  ?`bgtz_out  :(
-							(Instruction_Register[31:26] == `lb_in)    ?`lb_out    :(
-							(Instruction_Register[31:26] == `lbu_in)   ?`lbu_out   :(
-							(Instruction_Register[31:26] == `lh_in)    ?`lh_out    :(
-							(Instruction_Register[31:26] == `lhu_in)   ?`lhu_out   :(
-							(Instruction_Register[31:26] == `lwl_in)   ?`lwl_out   :(
-							(Instruction_Register[31:26] == `lwr_in)   ?`lwr_out   :(
-							(Instruction_Register[31:26] == `ori_in)   ?`ori_out   :(
-							(Instruction_Register[31:26] == `sb_in)	  ?`sb_out	  :(
-							(Instruction_Register[31:26] == `sh_in)	  ?`sh_out	  :(
-							(Instruction_Register[31:26] == `swl_in)   ?`swl_out   :(
-							(Instruction_Register[31:26] == `swr_in)   ?`swr_out   :(
+							(Instruction_Register[31:26] == `ori_in)   ?`ori_out   :(					
 							(Instruction_Register[31:26] == `xori_in)  ?`xori_out  :(
 
-							(Instruction_Register[31:26] == `j_in)	   ?`j_out	  :11'b1000000000)))))))))))))))))))))))))));
+							(Instruction_Register[31:26] == `jal_in)   ?`jal_out   :(
+							(Instruction_Register[31:26] == `j_in)	   ?`j_out	  :11'b1000000000)))))))))))))));
 
 	assign DonotJump 	 = control_data[10];
 	assign RegDst    	 = control_data[9];
@@ -344,40 +403,44 @@ module mips_cpu(
 //下面这个是样例图最右边主存旁边的数据选择器
 	assign RF_wdata = (Instruction_Register[31:26] == `jal_in)?(PC_reg+8):(
 						(MemtoReg == 1)?(
-						(Instruction_Register[31:26] == `lb_in || Instruction_Register[31:26] == `lh_in)?Read_data_symbol_extension:(
-						(Instruction_Register[31:26] == `lbu_in || Instruction_Register[31:26] == `lhu_in)?Read_data_logical_extension:(
-						(Instruction_Register[31:26] == `lwl_in)?(
+						((Instruction_Register[31:29] == `L_type_in && in_funct == `lb_in_funct) || 
+						 (Instruction_Register[31:29] == `L_type_in && in_funct == `lh_in_funct))?Read_data_symbol_extension:(
+
+						((Instruction_Register[31:29] == `L_type_in && in_funct == `lbu_in_funct) || 
+						 (Instruction_Register[31:29] == `L_type_in && in_funct == `lhu_in_funct))?Read_data_logical_extension:(
+
+						(Instruction_Register[31:29] == `L_type_in && in_funct == `lwl_in_funct)?(
 							(vAddr10 == 2'b00)?{Read_data_reg[7:0], RF_rdata2[23:0]}:(
 							(vAddr10 == 2'b01)?{Read_data_reg[15:0], RF_rdata2[15:0]}:(
 							(vAddr10 == 2'b10)?{Read_data_reg[23:0], RF_rdata2[7:0]}:Read_data_reg))):(
-						(Instruction_Register[31:26] == `lwr_in)?(
+						(Instruction_Register[31:29] == `L_type_in && in_funct == `lwr_in_funct)?(
 							(vAddr10 == 2'b00)?Read_data_reg:(
 							(vAddr10 == 2'b01)?{RF_rdata2[31:24], Read_data_reg[31:8]}:(
 							(vAddr10 == 2'b10)?{RF_rdata2[31:16], Read_data_reg[31:16]}:{RF_rdata2[31:8], Read_data_reg[31:24]}))):Read_data_reg))
 						)):alu1_result);//先判断是否是直接将PC+8塞进去的指令，然后再判断别的
 
-	assign Read_data_symbol_extension = (Instruction_Register[31:26] == `lb_in)?(
+	assign Read_data_symbol_extension = (Instruction_Register[31:29] == `L_type_in && in_funct == `lb_in_funct)?(
 											(vAddr10 == 2'b00)?{{24{Read_data_reg[7]}}, Read_data_reg[7:0]}:(
 											(vAddr10 == 2'b01)?{{24{Read_data_reg[15]}}, Read_data_reg[15:8]}:(
 											(vAddr10 == 2'b10)?{{24{Read_data_reg[23]}}, Read_data_reg[23:16]}:{{24{Read_data_reg[31]}}, Read_data_reg[31:24]}))):(
-										(Instruction_Register[31:26] == `lh_in)?(
+										(Instruction_Register[31:29] == `L_type_in && in_funct == `lh_in_funct)?(
 											(vAddr10[1] == 1'b1)?{{16{Read_data_reg[31]}}, Read_data_reg[31:16]}:{{16{Read_data_reg[15]}}, Read_data_reg[15:0]}):Read_data_reg);//将8位/16位Read_data符号扩展
 										
 
-	assign Read_data_logical_extension = (Instruction_Register[31:26] == `lbu_in)?(
+	assign Read_data_logical_extension = (Instruction_Register[31:29] == `L_type_in && in_funct == `lbu_in_funct)?(
 											(vAddr10 == 2'b00)?{24'b0, Read_data_reg[7:0]}:(
 											(vAddr10 == 2'b01)?{24'b0, Read_data_reg[15:8]}:(
 											(vAddr10 == 2'b10)?{24'b0, Read_data_reg[23:16]}:{24'b0, Read_data_reg[31:24]}))):(
-										(Instruction_Register[31:26] == `lhu_in)?(
+										(Instruction_Register[31:29] == `L_type_in && in_funct == `lhu_in_funct)?(
 											(vAddr10[1] == 1'b1)?{16'b0, Read_data_reg[31:16]}:{16'b0, Read_data_reg[15:0]}):Read_data_reg);//将8位/16位Read_data高位加0拓展为32位
 
 
 	//下面几个assign是为了实现lwl/lwr而设置的
-	assign Write_strb_for_reg_file = (Instruction_Register[31:26] == `lwl_in)?(
+	assign Write_strb_for_reg_file = (Instruction_Register[31:29] == `L_type_in && in_funct == `lwl_in_funct)?(
 										(vAddr10 == 2'b00)?4'b1000:(
 										(vAddr10 == 2'b01)?4'b1100:(
 										(vAddr10 == 2'b10)?4'b1110:4'b1111))):(
-									 (Instruction_Register[31:26] == `lwr_in)?(
+									 (Instruction_Register[31:29] == `L_type_in && in_funct == `lwr_in_funct)?(
 									 	(vAddr10 == 2'b00)?4'b1111:(
 									 	(vAddr10 == 2'b01)?4'b0111:(
 									 	(vAddr10 == 2'b10)?4'b0011:4'b0001))):4'b1111);
@@ -388,46 +451,46 @@ module mips_cpu(
 	assign Address_raw = alu1_result;
 	assign Address_align = Address_raw - vAddr10;
 	assign Address_before_always =
-					 (Instruction_Register[31:26] == `lwl_in || 
-					  Instruction_Register[31:26] == `lwr_in ||
-					  Instruction_Register[31:26] == `swl_in ||
-					  Instruction_Register[31:26] == `swr_in ||
-					  Instruction_Register[31:26] == `sb_in  ||
-					  Instruction_Register[31:26] == `sh_in  ||
-					  Instruction_Register[31:26] == `lb_in  ||
-					  Instruction_Register[31:26] == `lh_in
+					 ((Instruction_Register[31:29] == `L_type_in && in_funct == `lwl_in_funct)|| 
+					  (Instruction_Register[31:29] == `L_type_in && in_funct == `lwr_in_funct)||
+					  (Instruction_Register[31:29] == `S_type_in && in_funct == `swl_in_funct)||
+					  (Instruction_Register[31:29] == `S_type_in && in_funct == `swr_in_funct)||
+					  (Instruction_Register[31:29] == `S_type_in && in_funct == `sb_in_funct) ||
+					  (Instruction_Register[31:29] == `S_type_in && in_funct == `sh_in_funct) ||
+					  (Instruction_Register[31:29] == `L_type_in && in_funct == `lb_in_funct) ||
+					  (Instruction_Register[31:29] == `L_type_in && in_funct == `lh_in_funct)
 					  )?Address_align:Address_raw;
 
 
-	assign Write_data = (Instruction_Register[31:26] == `swl_in)?(
+	assign Write_data = (Instruction_Register[31:29] == `S_type_in && in_funct == `swl_in_funct)?(
 							(vAddr10 == 2'b00)?{24'b0, RF_rdata2[31:24]}:(
 							(vAddr10 == 2'b01)?{16'b0, RF_rdata2[31:16]}:(
 							(vAddr10 == 2'b10)?{8'b0,  RF_rdata2[31:8]}:RF_rdata2))):(
-						(Instruction_Register[31:26] == `swr_in)?(
+						(Instruction_Register[31:29] == `S_type_in && in_funct == `swr_in_funct)?(
 							(vAddr10 == 2'b00)?RF_rdata2:(
 							(vAddr10 == 2'b01)?{RF_rdata2[23:0], 8'b0}:(
 							(vAddr10 == 2'b10)?{RF_rdata2[15:0], 16'b0}:{RF_rdata2[7:0], 24'b0}))):(
-						(Instruction_Register[31:26] == `sb_in)?(
+						(Instruction_Register[31:29] == `S_type_in && in_funct == `sb_in_funct )?(
 							(vAddr10 == 2'b00)?{24'b0, RF_rdata2[7:0]}:(
 							(vAddr10 == 2'b01)?{16'b0, RF_rdata2[7:0], 8'b0}:(
 							(vAddr10 == 2'b10)?{8'b0, RF_rdata2[7:0], 16'b0}:{RF_rdata2[7:0], 24'b0}))):(
-						(Instruction_Register[31:26] == `sh_in)?(
+						(Instruction_Register[31:29] == `S_type_in && in_funct == `sh_in_funct )?(
 							(vAddr10[1] == 1'b1)?{RF_rdata2[15:0], 16'b0}:{16'b0, RF_rdata2}):RF_rdata2)));
 
 
-	assign Write_strb = (Instruction_Register[31:26] == `swl_in)?(
+	assign Write_strb = (Instruction_Register[31:29] == `S_type_in && in_funct == `swl_in_funct)?(
 							(vAddr10 == 2'b00)?4'b0001:(
 							(vAddr10 == 2'b01)?4'b0011:(
 							(vAddr10 == 2'b10)?4'b0111:4'b1111))):(
-						(Instruction_Register[31:26] == `swr_in)?(
+						(Instruction_Register[31:29] == `S_type_in && in_funct == `swr_in_funct)?(
 							(vAddr10 == 2'b00)?4'b1111:(
 							(vAddr10 == 2'b01)?4'b1110:(
 							(vAddr10 == 2'b10)?4'b1100:4'b1000))):(
-						(Instruction_Register[31:26] == `sb_in)?(
+						(Instruction_Register[31:29] == `S_type_in && in_funct == `sb_in_funct )?(
 							(vAddr10 == 2'b00)?4'b0001:(
 							(vAddr10 == 2'b01)?4'b0010:(
 							(vAddr10 == 2'b10)?4'b0100:4'b1000))):(
-						(Instruction_Register[31:26] == `sh_in)?(
+						(Instruction_Register[31:29] == `S_type_in && in_funct == `sh_in_funct )?(
 							(vAddr10[1] == 1'b1)?4'b1100:4'b0011):(4'b1111))));//阶段1保持全1即可
 
 
@@ -513,20 +576,20 @@ module mips_cpu(
 			end
 			`EX:
 			begin
-				if (Instruction_Register[31:26] == `lb_in  ||//Load指令
-					Instruction_Register[31:26] == `lh_in  ||
-					Instruction_Register[31:26] == `lwl_in ||
-					Instruction_Register[31:26] == `lw_in  ||
-					Instruction_Register[31:26] == `lbu_in ||
-					Instruction_Register[31:26] == `lhu_in ||
-					Instruction_Register[31:26] == `lwr_in)
+				if ((Instruction_Register[31:29] == `L_type_in && in_funct == `lb_in_funct)  ||//Load指令
+					(Instruction_Register[31:29] == `L_type_in && in_funct == `lh_in_funct)  ||
+					(Instruction_Register[31:29] == `L_type_in && in_funct == `lwl_in_funct) ||
+					(Instruction_Register[31:29] == `L_type_in && in_funct == `lw_in_funct)  ||
+					(Instruction_Register[31:29] == `L_type_in && in_funct == `lbu_in_funct) ||
+					(Instruction_Register[31:29] == `L_type_in && in_funct == `lhu_in_funct) ||
+					(Instruction_Register[31:29] == `L_type_in && in_funct == `lwr_in_funct))
 
 					cpu_status_next = `LD;
-				else if (Instruction_Register[31:26] == `sb_in  ||//Store指令
-						 Instruction_Register[31:26] == `sh_in  ||
-						 Instruction_Register[31:26] == `swl_in ||
-						 Instruction_Register[31:26] == `sw_in  ||
-						 Instruction_Register[31:26] == `swr_in)
+				else if ((Instruction_Register[31:29] == `S_type_in && in_funct == `sb_in_funct )	||//Store指令
+						 (Instruction_Register[31:29] == `S_type_in && in_funct == `sh_in_funct )   ||
+						 (Instruction_Register[31:29] == `S_type_in && in_funct == `swl_in_funct)	||
+						 (Instruction_Register[31:29] == `S_type_in && in_funct == `sw_in_funct)	||
+						 (Instruction_Register[31:29] == `S_type_in && in_funct == `swr_in_funct))
 				 	cpu_status_next = `ST;
 				else if (Instruction_Register[31:26] == `bgez_in ||//跳转指令
 						 Instruction_Register[31:26] == `blez_in ||
