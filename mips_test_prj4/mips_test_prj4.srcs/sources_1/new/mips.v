@@ -309,7 +309,9 @@ module mips_cpu(
 //统一指令用
 	wire [2:0] in_funct;
 
-
+//由于jalr要求与别的j指令写寄存器的时候不一样，因此只能单独处理它了
+	reg [31:0] RF_wdata_just_for_jalr;//单独给jalr的reg
+	wire [31:0] RF_wdata_final;//最终给reg_file的值，这个是在处理jalr指令之后的
 
 //干正事：
 
@@ -338,9 +340,11 @@ module mips_cpu(
 							(Instruction_Register[31:26] == `andi_in)  ?`andi_out  :(
 							(Instruction_Register[31:26] == `ori_in)   ?`ori_out   :(					
 							(Instruction_Register[31:26] == `xori_in)  ?`xori_out  :(
+							(Instruction_Register[31:26] == `slti_in)  ?`slti_out  :(
+							(Instruction_Register[31:26] == `sltiu_in) ?`sltiu_out :(
 
 							(Instruction_Register[31:26] == `jal_in)   ?`jal_out   :(
-							(Instruction_Register[31:26] == `j_in)	   ?`j_out	  :11'b1000000000)))))))))))))));
+							(Instruction_Register[31:26] == `j_in)	   ?`j_out	  :11'b1000000000)))))))))))))))));
 
 	assign DonotJump 	 = control_data[10];
 	assign RegDst    	 = control_data[9];
@@ -515,6 +519,8 @@ module mips_cpu(
 	assign PC = PC_reg;
 	assign RF_wen = RF_wen_reg;
 	assign Instruction_for_submodule = Instruction_Register;
+	assign RF_wdata_final = (Instruction_Register[31:26] == `R_type_in && funct == `jalr_funct)?RF_wdata_just_for_jalr:RF_wdata;//考虑jalr这个奇葩指令之后的最终信号
+
 
 	ALU_controller act1(.funct(funct), .ALUop_raw(ALUop_raw), .ALUop(ALUop));//书上样例的“ALU控制”模块
 	shifter s1(.funct(funct), .shamt(shamt), .alu_a_raw(alu1_a_raw), .alu_b_raw(alu1_b_raw), .typecode(Instruction_for_submodule[31:26]), .alu_a(alu1_a), .alu_b(alu1_b));//最下面新增的移位模块
@@ -525,7 +531,7 @@ module mips_cpu(
 	assign alu2_result = alu2_a + alu2_b;
 	//上面两个alu，第一个是样例图里面右下方的alu，第二个是样例图右上方的alu
 
-	reg_file r1(.clk(clk), .rst(rst), .waddr(RF_waddr), .raddr1(RF_raddr1), .raddr2(RF_raddr2), .wen(RF_wen), .wdata(RF_wdata), .rdata1(RF_rdata1), .rdata2(RF_rdata2));    //, .Write_strb(Write_strb_for_reg_file));
+	reg_file r1(.clk(clk), .rst(rst), .waddr(RF_waddr), .raddr1(RF_raddr1), .raddr2(RF_raddr2), .wen(RF_wen), .wdata(RF_wdata_final), .rdata1(RF_rdata1), .rdata2(RF_rdata2));    //, .Write_strb(Write_strb_for_reg_file));
 	//此为样例图里面的寄存器堆
 
 
@@ -576,20 +582,9 @@ module mips_cpu(
 			end
 			`EX:
 			begin
-				if ((Instruction_Register[31:29] == `L_type_in && in_funct == `lb_in_funct)  ||//Load指令
-					(Instruction_Register[31:29] == `L_type_in && in_funct == `lh_in_funct)  ||
-					(Instruction_Register[31:29] == `L_type_in && in_funct == `lwl_in_funct) ||
-					(Instruction_Register[31:29] == `L_type_in && in_funct == `lw_in_funct)  ||
-					(Instruction_Register[31:29] == `L_type_in && in_funct == `lbu_in_funct) ||
-					(Instruction_Register[31:29] == `L_type_in && in_funct == `lhu_in_funct) ||
-					(Instruction_Register[31:29] == `L_type_in && in_funct == `lwr_in_funct))
-
+				if (Instruction_Register[31:29] == `L_type_in)//Load
 					cpu_status_next = `LD;
-				else if ((Instruction_Register[31:29] == `S_type_in && in_funct == `sb_in_funct )	||//Store指令
-						 (Instruction_Register[31:29] == `S_type_in && in_funct == `sh_in_funct )   ||
-						 (Instruction_Register[31:29] == `S_type_in && in_funct == `swl_in_funct)	||
-						 (Instruction_Register[31:29] == `S_type_in && in_funct == `sw_in_funct)	||
-						 (Instruction_Register[31:29] == `S_type_in && in_funct == `swr_in_funct))
+				else if (Instruction_Register[31:29] == `S_type_in)//Store
 				 	cpu_status_next = `ST;
 				else if (Instruction_Register[31:26] == `bgez_in ||//跳转指令
 						 Instruction_Register[31:26] == `blez_in ||
@@ -904,6 +899,21 @@ module mips_cpu(
 		begin
 			if (cpu_status_now == `EX)			
 				Address <= Address_before_always;		
+		end
+	end
+
+	always @(posedge clk) 
+	begin
+		if (rst) 
+		begin
+			RF_wdata_just_for_jalr <= RF_wdata;
+		end
+		else
+		begin 
+			if (cpu_status_next == `EX)//如果下一个状态是EX，那么马上更新专属RF_Wdata，等到EX的时候就晚了
+			begin
+				RF_wdata_just_for_jalr <= RF_wdata;
+			end
 		end
 	end
 
