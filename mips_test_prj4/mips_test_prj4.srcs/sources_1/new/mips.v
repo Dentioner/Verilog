@@ -314,7 +314,7 @@ module mips_cpu(
 	wire [31:0] RF_wdata_final;//最终给reg_file的值，这个是在处理jalr指令之后的
 
 //统计性能用
-	reg [63:0] cycle_counter;
+	reg [31:0] cycle_counter;
 	reg [31:0] mem_cycle_counter;
 
 
@@ -527,8 +527,7 @@ module mips_cpu(
 	assign RF_wdata_final = (Instruction_Register[31:26] == `R_type_in && funct == `jalr_funct)?RF_wdata_just_for_jalr:RF_wdata;//考虑jalr这个奇葩指令之后的最终信号
 
 //mips_perf_cnt
-	assign mips_perf_cnt_0 = cycle_counter[31:0];//低位
-	assign mips_perf_cnt_1 = cycle_counter[63:32];//高位
+	assign mips_perf_cnt_0 = cycle_counter[31:0];
 
 	assign mips_perf_cnt_2 = mem_cycle_counter;
 
@@ -932,7 +931,7 @@ module mips_cpu(
 	begin
 		if (rst) 
 		begin
-			cycle_counter <= 64'b0; // reset			
+			cycle_counter <= 32'b0; // reset			
 		end
 		else
 		begin
