@@ -316,7 +316,9 @@ module mips_cpu(
 //统计性能用
 	reg [31:0] cycle_counter;
 	reg [31:0] mem_cycle_counter;
-
+	reg [31:0] instruction_counter;
+	reg [31:0] reg_file_counter;
+	reg [31:0] jb_counter;
 
 //干正事：
 
@@ -527,10 +529,12 @@ module mips_cpu(
 	assign RF_wdata_final = (Instruction_Register[31:26] == `R_type_in && funct == `jalr_funct)?RF_wdata_just_for_jalr:RF_wdata;//考虑jalr这个奇葩指令之后的最终信号
 
 //mips_perf_cnt
-	assign mips_perf_cnt_0 = cycle_counter[31:0];
+	assign mips_perf_cnt_0 = cycle_counter;
 
 	assign mips_perf_cnt_2 = mem_cycle_counter;
-
+	assign mips_perf_cnt_3 = instruction_counter;
+	assign mips_perf_cnt_4 = reg_file_counter;
+	assign mips_perf_cnt_5 = jb_counter;
 
 	ALU_controller act1(.funct(funct), .ALUop_raw(ALUop_raw), .ALUop(ALUop));//书上样例的“ALU控制”模块
 	shifter s1(.funct(funct), .shamt(shamt), .alu_a_raw(alu1_a_raw), .alu_b_raw(alu1_b_raw), .typecode(Instruction_for_submodule[31:26]), .alu_a(alu1_a), .alu_b(alu1_b));//最下面新增的移位模块
@@ -958,6 +962,49 @@ module mips_cpu(
 			end
 		end
 	end
+
+	always @(posedge clk) 
+	begin
+		if (rst) 
+		begin
+			instruction_counter <= 32'b0;	// reset
+			
+		end
+		else 
+			if (cpu_status_now == `IW && Inst_Valid) 
+			begin
+				instruction_counter <= instruction_counter + 1;
+			end
+	end
+
+	always @(posedge clk) 
+	begin
+		if (rst) 
+		begin
+			reg_file_counter <= 32'b0;	// reset
+				
+		end
+		else 
+			if (RF_wen) 
+			begin
+				reg_file_counter <= reg_file_counter + 1;
+			end
+	end
+
+	always @(posedge clk) 
+	begin
+		if (rst) 
+		begin
+			jb_counter <= 32'b0;	// reset
+			
+		end
+		else 
+			if (cpu_status_now == `EX && cpu_status_next == `IF) 
+			begin
+				jb_counter <= jb_counter + 1;
+			end
+	end
+
 endmodule
 
 module ALU_controller(
