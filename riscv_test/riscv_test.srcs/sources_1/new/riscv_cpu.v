@@ -14,14 +14,15 @@
 `define NOR  4'b1100
 
 
-`define and_aluop_raw    3'b000
-`define or_aluop_raw     3'b001
-`define add_aluop_raw    3'b010
-`define sltu_aluop_raw	 3'b011
-`define R_type_aluop_raw 3'b100
-`define sub_aluop_raw	 3'b110
-`define slt_aluop_raw	 3'b111
-`define xor_aluop_raw	 3'b101
+`define and_aluop_raw    4'b0000
+`define or_aluop_raw     4'b0001
+`define add_aluop_raw    4'b0010
+`define sltu_aluop_raw	 4'b0011
+`define R_type_aluop_raw 4'b0100
+`define sub_aluop_raw	 4'b0110
+`define slt_aluop_raw	 4'b0111
+`define xor_aluop_raw	 4'b0101
+`define B_type_aluop_raw 4'b1000
 
 //****************************************************************R_type************************************************************************************************
 `define R_type_opcode	7'b0110011
@@ -80,18 +81,19 @@
 `define bltu_funct3		3'b110
 `define bgeu_funct3		3'b111
 
-
+`define B_type_out 		12'b100000011000
 
 //****************************************************************U_type************************************************************************************************
 `define lui_opcode		7'b0110111
 `define auipc_opcode	7'b0010111
 
-`define lui_out			11'b10101000010
+`define lui_out			12'b111010000010
 //****************************************************************J_type************************************************************************************************
 `define jal_opcode		7'b1101111
 `define jalr_opcode		7'b1100111
 
-`define jal_out			11'b00001000010
+`define jal_out			12'b010010000010
+`define jalr_out 		12'b111010000010
 
 module riscv_cpu(
 	input  rst,
@@ -138,7 +140,7 @@ module riscv_cpu(
 	wire MemRead_wire;
 	wire MemWrite_wire;
 	wire Branch;
-	wire [2:0] ALUop_raw;
+	wire [3:0] ALUop_raw;
 	wire [3:0] ALUop;
 
 	wire [4:0] rd_address;
@@ -149,6 +151,8 @@ module riscv_cpu(
 	wire [19:0] U_type_imm;//u型指令使用的立即数
 	wire [19:0]	jal_imm;//jal使用的offset
 	wire [31:0] jal_offset_ex;//jal的偏移
+	wire [11:0] jalr_imm;//jalr的立即数
+	wire [11:0] B_type_imm;
 
 
 	wire [31:0] symbol_extension;
@@ -176,6 +180,28 @@ module riscv_cpu(
 	wire [31:0]		RF_rdata1;
 	wire [31:0]		RF_rdata2;
 //以上是寄存器堆使用的wires
+	wire [31:0] symbol_extension;//符号扩展单元使用
+	wire Branch_after_AND;//这个信号是在branch和zero信号经过与门之后操作数据选择器的信号
+	wire [31:0] add_result;//左上角加法器的结果
+	wire [31:0] PC_input_before_jump;
+	wire [31:0] PC_input_after_jump;//给PC输入的
+
+
+
+//下面这两个线是给instruction最低的11位命名
+	wire [5:0] funct;
+	wire [4:0] shamt;
+ 
+	wire [31:0] jump_address;//jmp类指令使用
+
+	wire [31:0] Read_data_symbol_extension;//lb/lh指令使用
+	wire [31:0] Read_data_logical_extension;//lbu/lhu指令使用
+
+//下面的wire是给lwl/lwr用的
+	wire [3:0] Write_strb_for_reg_file;//lwl/lwr使用
+	wire [1:0] vAddr10;//lwl/lwr使用
+	wire [31:0] Address_raw;//lwl/lwr使用
+	wire [31:0] Address_align;
 
 
 	reg [31:0] Instruction_Register;
@@ -190,7 +216,9 @@ module riscv_cpu(
 	assign funct7 		= Instruction_Register[31:25];
 
 	assign U_type_imm 	= Instruction_Register[31:12];
-	assign jal_imm 		= Instruction_Register[31:12];
+	assign jal_imm 		= {Instruction_Register[31], Instruction_Register[19:12], Instruction_Register[20], Instruction_Register[30:21]};
+	assign jalr_imm 	= Instruction_Register[31:20];
+	assign B_type_imm 	= {Instruction_Register[31], Instruction_Register[7], Instruction_Register[30:25], Instruction_Register[11:8]};
 
 	//下面这堆assign是书上样例的“控制”模块
 	assign control_data =   (opcode == `R_type_in)?`R_type_out:(
@@ -199,12 +227,7 @@ module riscv_cpu(
 						
 							
 
-							(opcode == `beq_in)   ?`B_type_out:(
-							(opcode == `bgez_in)  ?`B_type_out:(
-							(opcode == `blez_in)  ?`B_type_out:(
-							(opcode == `bltz_in)  ?`B_type_out:(
-							(opcode == `bgtz_in)  ?`B_type_out:(
-							(opcode == `bne_in)   ?`B_type_out:(
+							(opcode == `B_type_opcode)   ?`B_type_out:(
 
 							(opcode == `addiu_in) ?`addiu_out :(							
 							(opcode == `lui_opcode)   ?`lui_out   :(							
@@ -214,20 +237,21 @@ module riscv_cpu(
 							(opcode == `slti_in)  ?`slti_out  :(
 							(opcode == `sltiu_in) ?`sltiu_out :(
 
-							(opcode == `jal_in)   ?`jal_out   :(
-							(opcode == `j_in)	   ?`j_out	  :11'b1000000000)))))))))))))))));
+							(opcode == `jal_opcode)   ?`jal_out   :(
+
+							(opcode == `jalr_opcode)	   ?`jalr_out	  :12'b10000000000))))))))))));
 
 
 
-	assign DonotJump 	 = control_data[10];
-	assign RegDst    	 = control_data[9];
-	assign ALUsrc    	 = control_data[8];
-	assign MemtoReg  	 = control_data[7];
-	assign RegWrite		 = control_data[6];
-	assign MemRead_wire  = control_data[5];
-	assign MemWrite_wire = control_data[4];
-	assign Branch    	 = control_data[3];
-	assign ALUop_raw 	 = control_data[2:0];
+	assign DonotJump 	 = control_data[11];
+	assign RegDst    	 = control_data[10];
+	assign ALUsrc    	 = control_data[9];
+	assign MemtoReg  	 = control_data[8];
+	assign RegWrite		 = control_data[7];
+	assign MemRead_wire  = control_data[6];
+	assign MemWrite_wire = control_data[5];
+	assign Branch    	 = control_data[4];
+	assign ALUop_raw 	 = control_data[3:0];
 
 
 	
@@ -237,11 +261,10 @@ module riscv_cpu(
 	
 
 //下面这堆assign是寄存器堆使用的
-	assign RF_raddr1 = Instruction_Register[25:21];
-	assign RF_raddr2 = Instruction_Register[20:16];//这个raddr2可能还要改，因为样例图里面好像有Instruction_Register20~16不进人raddr2的
-	
+	assign RF_raddr1 = rs1_address;
+	assign RF_raddr2 = rs2_address;
 
-	assign RF_waddr = (RegDst == 1)?没写完没写完:rd_address;//此为样例图寄存器堆左边的数据选择器
+	assign RF_waddr = (RegDst == 0)?rs2_address:rd_address;//此为样例图寄存器堆左边的数据选择器
 	
 
 	assign RF_wen_before_always = 
@@ -253,30 +276,31 @@ module riscv_cpu(
 	//为了让仿真通过只好再把这个地方加点条件保证RF_wen不能在写地址为0的时候=1了。
 
 //下面这堆assign是两个alu使用的
-	assign alu1_a_raw = (opcode == `R_type_in && funct == `jalr_funct)?(add_result + 4):RF_rdata1;//这里如果发现指令是jalr，直接将PC+4塞到A输入端即可
+	assign alu1_a_raw = RF_rdata1;//和mips不同，这里jalr也要使用RF_data的数据，而不是PC的
 	assign alu1_b_raw = (ALUsrc == 1)?symbol_extension:(
 						(opcode == `R_type_in && funct == `movn_funct)?32'b0://如果ALUSrc=0，说明操作数b不是16位那边过来的，这时候再判断是不是在执行movn指令，
 						RF_rdata2);//如果是movn，则将操作数b变成0，否则照常输入RF_data2
 						//此为寄存器堆右边的数据选择器
-	assign alu2_a = add_result;
-	assign alu2_b = symbol_extension<<2;//符号扩展信号左移2位
+	assign alu2_a = (opcode == `B_type_opcode)?PC_reg:add_result;
+	assign alu2_b = (opcode == `B_type_opcode)?B_type_imm:symbol_extension<<2;//符号扩展信号左移2位
 
 
 //下面这堆assign是样例图寄存器下面的“符号扩展”模块
 	assign symbol_extension = (opcode == `lui_opcode)?{U_type_imm, 12'b0}:(
+							  (opcode == `jalr_opcode)?{{20{jalr_imm[11]}}, jalr_imm}:(
 							  (opcode == `sltiu_in || 
 							  	opcode == `andi_in ||
 							  	opcode == `xori_in || 
 							  	opcode == `ori_in)?{16'b0, Instruction_Register[15:0]}:
-							{{16{Instruction_Register[15]}}, Instruction_Register[15:0]});//如果是lui指令则做左移，否则符号拓展
+							{{16{Instruction_Register[15]}}, Instruction_Register[15:0]}));//如果是lui指令则做左移，否则符号拓展
 
 //下面这堆assign是给右上角的数据选择器用的
 	assign Branch_after_AND = Branch & Zero_input_to_alu2;
-	assign Zero_input_to_alu2 = (opcode == `bne_in)?~Zero_raw:(//Zero_raw对于bne需要处理一下
-								(opcode == `bgez_in && Instruction_Register[20:16] == `regimm_bgez)?~RF_rdata1[31]:(
-								(opcode == `bltz_in && Instruction_Register[20:16] == `regimm_bltz)?RF_rdata1[31]:(
-								(opcode == `blez_in)?(RF_rdata1[31]|Zero_raw):(
-								(opcode == `bgtz_in)?((!RF_rdata1[31])&(!Zero_raw)):
+	assign Zero_input_to_alu2 = (opcode == `B_type_opcode && funct3 == `bne_funct3)?~Zero_raw:(//Zero_raw对于bne需要处理一下
+								(opcode == `B_type_opcode && funct3 == `bltu_funct3)?alu1_result[0]:(
+								(opcode == `B_type_opcode && funct3 == `blt_funct3)?alu1_result[0]:(
+								(opcode == `B_type_opcode && funct3 == `bge_funct3)?~alu1_result[0]:(
+								(opcode == `B_type_opcode && funct3 == `bgeu_funct3)?~alu1_result[0]:
 									Zero_raw))));
 	assign PC_input_before_jump = (Branch_after_AND == 1)?alu2_result:add_result;
 
@@ -284,7 +308,7 @@ module riscv_cpu(
 	assign add_result = PC_reg + 4;
 
 //下面这个是样例图最右边主存旁边的数据选择器
-	assign RF_wdata = (opcode == `jal_in)?(PC_reg+8):(
+	assign RF_wdata = (opcode == `jal_opcode || opcode == `jalr_opcode)?(PC_reg+4):(
 						(MemtoReg == 1)?(
 						((Instruction_Register[31:29] == `L_type_in && in_funct == `lb_in_funct) || 
 						 (Instruction_Register[31:29] == `L_type_in && in_funct == `lh_in_funct))?Read_data_symbol_extension:(
@@ -382,7 +406,7 @@ module riscv_cpu(
 
 	assign PC_input_after_jump =(DonotJump)?(
 								(funct == `jr_funct && opcode == `R_type_in)?alu1_result:(
-								(funct == `jalr_funct && opcode == `R_type_in)?RF_rdata1:PC_input_before_jump
+								(opcode == `jalr_opcode)?{alu1_result[31:1], 1'b0}}:PC_input_before_jump
 								)):jump_address;//这个地方实现多个信号选择，jump=1表示不用j类地址，而funct为jr时直接使用alu1的结果
 
 
@@ -399,7 +423,7 @@ module riscv_cpu(
 	assign PC = PC_reg;
 	assign RF_wen = RF_wen_reg;
 	assign Instruction_for_submodule = Instruction_Register;
-	assign RF_wdata_final = (opcode == `R_type_in && funct == `jalr_funct)?RF_wdata_just_for_jalr:RF_wdata;//考虑jalr这个奇葩指令之后的最终信号
+	assign RF_wdata_final = (opcode == `jalr_opcode)?RF_wdata_just_for_jalr:RF_wdata;//考虑jalr这个奇葩指令之后的最终信号
 
 //*****************************sub_modules************************************************************************
 	ALU_controller act1(.funct(funct), .ALUop_raw(ALUop_raw), .ALUop(ALUop));//书上样例的“ALU控制”模块
@@ -423,7 +447,7 @@ endmodule
 
 module ALU_controller(
 	input [5:0] funct,
-	input [2:0]	ALUop_raw,
+	input [3:0]	ALUop_raw,
 	output [3:0] ALUop
 );
 	//localparam ADD = 4'b0010;
@@ -445,7 +469,7 @@ module ALU_controller(
 					(funct == `sll_funct  || 
 					 funct == `addu_funct || 
 					 funct == `jr_funct   || 
-					 funct == `jalr_funct || 
+					
 					 funct == `movn_funct ||
 				 	 funct == `srl_funct  ||
 				 	 funct == `sllv_funct ||
@@ -460,7 +484,17 @@ module ALU_controller(
 					(funct == `nor_funct)?`NOR:(
 					(funct == `xor_funct)?`XOR:(
 					(funct == `sltu_funct)?`SLTU:(
-					(funct == `slt_funct)?`SLT:4'b1111)))))))):4'b1111)))))));
+					(funct == `slt_funct)?`SLT:4'b1111)))))))):(
+
+					(ALUop_raw == `B_type_aluop_raw)?(
+
+					(funct3 == `beq_funct3 || funct3 == `bne_funct3)?`SUB:(
+					(funct3 == `blt_funct3)?`SLT:(
+					(funct3 == `bltu_funct3)?`SLTU:(
+					(funct3 == `bge_funct3)?`SLT:(
+					(funct3 == `bgeu_funct3)?`SLTU:
+					4'b1111))))):
+					4'b1111))))))));
 
 endmodule
 
