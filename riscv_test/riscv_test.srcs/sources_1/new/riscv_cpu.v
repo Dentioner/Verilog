@@ -91,6 +91,7 @@
 `define jal_opcode		7'b1101111
 `define jalr_opcode		7'b1100111
 
+`define jal_out			11'b00001000010
 
 module riscv_cpu(
 	input  rst,
@@ -146,6 +147,8 @@ module riscv_cpu(
 	wire [2:0] funct3;
 	wire [6:0] funct7;
 	wire [19:0] U_type_imm;//u型指令使用的立即数
+	wire [19:0]	jal_imm;//jal使用的offset
+	wire [31:0] jal_offset_ex;//jal的偏移
 
 
 	wire [31:0] symbol_extension;
@@ -187,7 +190,7 @@ module riscv_cpu(
 	assign funct7 		= Instruction_Register[31:25];
 
 	assign U_type_imm 	= Instruction_Register[31:12];
-
+	assign jal_imm 		= Instruction_Register[31:12];
 
 	//下面这堆assign是书上样例的“控制”模块
 	assign control_data =   (opcode == `R_type_in)?`R_type_out:(
@@ -238,8 +241,7 @@ module riscv_cpu(
 	assign RF_raddr2 = Instruction_Register[20:16];//这个raddr2可能还要改，因为样例图里面好像有Instruction_Register20~16不进人raddr2的
 	
 
-	assign RF_waddr = (opcode == `jal_in)?31:(
-						(RegDst == 1)?没写完没写完:rd_address);//此为样例图寄存器堆左边的数据选择器
+	assign RF_waddr = (RegDst == 1)?没写完没写完:rd_address;//此为样例图寄存器堆左边的数据选择器
 	
 
 	assign RF_wen_before_always = 
@@ -375,7 +377,8 @@ module riscv_cpu(
 							(vAddr10[1] == 1'b1)?4'b1100:4'b0011):(4'b1111))));//阶段1保持全1即可
 
 
-	assign jump_address = {add_result[31:28], Instruction_Register[25:0], 2'b00};//jmp的地址拼接
+	assign jal_offset_ex = {{11{jal_imm[19]}}, jal_imm, 1'b0};
+	assign jump_address = PC_reg + jal_offset_ex;//jmp的地址拼接
 
 	assign PC_input_after_jump =(DonotJump)?(
 								(funct == `jr_funct && opcode == `R_type_in)?alu1_result:(
