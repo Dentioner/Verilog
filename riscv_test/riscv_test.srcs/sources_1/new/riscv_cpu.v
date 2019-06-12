@@ -24,12 +24,63 @@
 `define xor_aluop_raw	 3'b101
 
 //****************************************************************R_type************************************************************************************************
+`define R_type_opcode	7'b0110011
+`define add_sub_funct3	3'b000
+`define sll_funct3 		3'b001
+`define slr_funct3 		3'b010
+`define sltu_funct3 	3'b011
+`define xor_funct3 		3'b100
+`define srl_sra_funct3	3'b101
+`define or_funct3 		3'b110
+`define and_funct3 		3'b111
+
+`define add_funct7		7'b0000000
+`define sub_funct7		7'b0100000
+
+`define srl_funct7 		7'b0000000
+`define sra_funct7 		7'b0100000
 
 //****************************************************************I_type************************************************************************************************
+`define I_type_opcode	7'b0010011
+`define addi_funct3		3'b000
+`define slti_funct3		3'b010
+`define sltiu_funct3	3'b011
+`define xori_funct3		3'b100
+`define ori_funct3		3'b110
+`define andi_funct3		3'b111
+
+`define slli_funct3			3'b001
+`define srli_srai_funct3	3'b101
+
+`define slli_imm		7'b0000000
+`define srli_imm		7'b0000000
+`define srai_imm		7'b0100000
+
+//****************************************************************L_type************************************************************************************************
+`define L_type_opcode	7'b0000011
+`define lb_funct3		3'b000
+`define lh_funct3		3'b001
+`define lw_funct3		3'b010
+`define lbu_funct3		3'b100
+`define lhu_funct3		3'b101
 
 //****************************************************************S_type************************************************************************************************
+`define S_type_opcode	7'b0100011
+`define sb_funct3		3'b000
+`define sh_funct3		3'b001
+`define sw_funct3		3'b010
+
 
 //****************************************************************B-type************************************************************************************************
+`define B_type_opcode	7'b1100011
+`define beq_funct3		3'b000
+`define bne_funct3		3'b001
+`define blt_funct3		3'b100
+`define bge_funct3		3'b101
+`define bltu_funct3		3'b110
+`define bgeu_funct3		3'b111
+
+
 
 //****************************************************************U_type************************************************************************************************
 `define lui_opcode		7'b0110111
@@ -37,6 +88,9 @@
 
 `define lui_out			11'b10101000010
 //****************************************************************J_type************************************************************************************************
+`define jal_opcode		7'b1101111
+`define jalr_opcode		7'b1100111
+
 
 module riscv_cpu(
 	input  rst,
@@ -150,7 +204,7 @@ module riscv_cpu(
 							(opcode == `bne_in)   ?`B_type_out:(
 
 							(opcode == `addiu_in) ?`addiu_out :(							
-							(opcode == `lui_in)   ?`lui_out   :(							
+							(opcode == `lui_opcode)   ?`lui_out   :(							
 							(opcode == `andi_in)  ?`andi_out  :(
 							(opcode == `ori_in)   ?`ori_out   :(					
 							(opcode == `xori_in)  ?`xori_out  :(
@@ -173,12 +227,8 @@ module riscv_cpu(
 	assign ALUop_raw 	 = control_data[2:0];
 
 
-	assign symbol_extension = (opcode == `lui_opcode)?{U_type_imm, 12'b0}:;
+	
 
-	assign funct = Instruction_Register[5:0];
-	assign shamt = Instruction_Register[10:6];
-
-	assign in_funct = Instruction_Register[28:26];
 
 
 	
@@ -189,7 +239,7 @@ module riscv_cpu(
 	
 
 	assign RF_waddr = (opcode == `jal_in)?31:(
-						(RegDst == 1)?Instruction_Register[15:11]:Instruction_Register[20:16]);//此为样例图寄存器堆左边的数据选择器
+						(RegDst == 1)?没写完没写完:rd_address);//此为样例图寄存器堆左边的数据选择器
 	
 
 	assign RF_wen_before_always = 
@@ -211,7 +261,7 @@ module riscv_cpu(
 
 
 //下面这堆assign是样例图寄存器下面的“符号扩展”模块
-	assign symbol_extension = (opcode == `lui_in)?{Instruction_Register[15:0], 16'b0}:(
+	assign symbol_extension = (opcode == `lui_opcode)?{U_type_imm, 12'b0}:(
 							  (opcode == `sltiu_in || 
 							  	opcode == `andi_in ||
 							  	opcode == `xori_in || 
