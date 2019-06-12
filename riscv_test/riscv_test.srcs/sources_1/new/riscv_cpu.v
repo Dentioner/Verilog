@@ -135,35 +135,33 @@ module riscv_cpu(
 	assign U_type_imm 	= Instruction_Register[31:12];
 
 
-	assign control_data = (opcode == `lui_opcode)?`lui_out:11'b1000000000;
-
-	/*
-	assign control_data =   (Instruction_Register[31:26] == `R_type_in)?`R_type_out:(
+	//下面这堆assign是书上样例的“控制”模块
+	assign control_data =   (opcode == `R_type_in)?`R_type_out:(
 							(Instruction_Register[31:29] == `L_type_in)?`L_type_out:(
 							(Instruction_Register[31:29] == `S_type_in)?`S_type_out:(			
 						
 							
 
-							(Instruction_Register[31:26] == `beq_in)   ?`B_type_out:(
-							(Instruction_Register[31:26] == `bgez_in)  ?`B_type_out:(
-							(Instruction_Register[31:26] == `blez_in)  ?`B_type_out:(
-							(Instruction_Register[31:26] == `bltz_in)  ?`B_type_out:(
-							(Instruction_Register[31:26] == `bgtz_in)  ?`B_type_out:(
-							(Instruction_Register[31:26] == `bne_in)   ?`B_type_out:(
+							(opcode == `beq_in)   ?`B_type_out:(
+							(opcode == `bgez_in)  ?`B_type_out:(
+							(opcode == `blez_in)  ?`B_type_out:(
+							(opcode == `bltz_in)  ?`B_type_out:(
+							(opcode == `bgtz_in)  ?`B_type_out:(
+							(opcode == `bne_in)   ?`B_type_out:(
 
-							(Instruction_Register[31:26] == `addiu_in) ?`addiu_out :(							
-							(Instruction_Register[31:26] == `lui_in)   ?`lui_out   :(							
-							(Instruction_Register[31:26] == `andi_in)  ?`andi_out  :(
-							(Instruction_Register[31:26] == `ori_in)   ?`ori_out   :(					
-							(Instruction_Register[31:26] == `xori_in)  ?`xori_out  :(
-							(Instruction_Register[31:26] == `slti_in)  ?`slti_out  :(
-							(Instruction_Register[31:26] == `sltiu_in) ?`sltiu_out :(
+							(opcode == `addiu_in) ?`addiu_out :(							
+							(opcode == `lui_in)   ?`lui_out   :(							
+							(opcode == `andi_in)  ?`andi_out  :(
+							(opcode == `ori_in)   ?`ori_out   :(					
+							(opcode == `xori_in)  ?`xori_out  :(
+							(opcode == `slti_in)  ?`slti_out  :(
+							(opcode == `sltiu_in) ?`sltiu_out :(
 
-							(Instruction_Register[31:26] == `jal_in)   ?`jal_out   :(
-							(Instruction_Register[31:26] == `j_in)	   ?`j_out	  :11'b1000000000)))))))))))))))));
+							(opcode == `jal_in)   ?`jal_out   :(
+							(opcode == `j_in)	   ?`j_out	  :11'b1000000000)))))))))))))))));
 
 
-	*/
+
 	assign DonotJump 	 = control_data[10];
 	assign RegDst    	 = control_data[9];
 	assign ALUsrc    	 = control_data[8];
@@ -177,31 +175,64 @@ module riscv_cpu(
 
 	assign symbol_extension = (opcode == `lui_opcode)?{U_type_imm, 12'b0}:;
 
-	/*
-	assign symbol_extension = (Instruction_Register[31:26] == `lui_in)?{Instruction_Register[15:0], 16'b0}:(
-							  (Instruction_Register[31:26] == `sltiu_in || 
-							  	Instruction_Register[31:26] == `andi_in ||
-							  	Instruction_Register[31:26] == `xori_in || 
-							  	Instruction_Register[31:26] == `ori_in)?{16'b0, Instruction_Register[15:0]}:
-							{{16{Instruction_Register[15]}}, Instruction_Register[15:0]});//如果是lui指令则做左移，否则符号拓展
+	assign funct = Instruction_Register[5:0];
+	assign shamt = Instruction_Register[10:6];
 
-	*/
+	assign in_funct = Instruction_Register[28:26];
 
 
-	assign alu1_b_raw = (ALUsrc == 1)?symbol_extension:;
-	/*
-	assign alu1_b_raw = (ALUsrc == 1)?symbol_extension:(
-						(Instruction_Register[31:26] == `R_type_in && funct == `movn_funct)?32'b0://如果ALUSrc=0，说明操作数b不是16位那边过来的，这时候再判断是不是在执行movn指令，
-						RF_rdata2);//如果是movn，则将操作数b变成0，否则照常输入RF_data2
-						//此为寄存器堆右边的数据选择器
-	*/
-
-//*****************************assignment for register files************************************************************************
 	
 
-	assign RF_wdata = alu1_result;
-	/*
-	assign RF_wdata = (Instruction_Register[31:26] == `jal_in)?(PC_reg+8):(
+//下面这堆assign是寄存器堆使用的
+	assign RF_raddr1 = Instruction_Register[25:21];
+	assign RF_raddr2 = Instruction_Register[20:16];//这个raddr2可能还要改，因为样例图里面好像有Instruction_Register20~16不进人raddr2的
+	
+
+	assign RF_waddr = (opcode == `jal_in)?31:(
+						(RegDst == 1)?Instruction_Register[15:11]:Instruction_Register[20:16]);//此为样例图寄存器堆左边的数据选择器
+	
+
+	assign RF_wen_before_always = 
+					(RF_waddr == 32'b0)?1'b0:(
+					(opcode == `R_type_in && funct == `movn_funct && RF_rdata2 == 32'b0)?1'b0:(//如果执行的是movn指令，而且rt=0时，写使能低电平
+					(opcode == `R_type_in && funct == `movz_funct && RF_rdata2 != 32'b0)?1'b0://如果执行的是movz指令，而且rt≠0时，写使能低电平
+					RegWrite));//好像仿真的时候认为写地址为0的时候是不能写的，
+	//但是实际上在regfile模块里面都保证了写地址为0的时候不接受外来信号
+	//为了让仿真通过只好再把这个地方加点条件保证RF_wen不能在写地址为0的时候=1了。
+
+//下面这堆assign是两个alu使用的
+	assign alu1_a_raw = (opcode == `R_type_in && funct == `jalr_funct)?(add_result + 4):RF_rdata1;//这里如果发现指令是jalr，直接将PC+4塞到A输入端即可
+	assign alu1_b_raw = (ALUsrc == 1)?symbol_extension:(
+						(opcode == `R_type_in && funct == `movn_funct)?32'b0://如果ALUSrc=0，说明操作数b不是16位那边过来的，这时候再判断是不是在执行movn指令，
+						RF_rdata2);//如果是movn，则将操作数b变成0，否则照常输入RF_data2
+						//此为寄存器堆右边的数据选择器
+	assign alu2_a = add_result;
+	assign alu2_b = symbol_extension<<2;//符号扩展信号左移2位
+
+
+//下面这堆assign是样例图寄存器下面的“符号扩展”模块
+	assign symbol_extension = (opcode == `lui_in)?{Instruction_Register[15:0], 16'b0}:(
+							  (opcode == `sltiu_in || 
+							  	opcode == `andi_in ||
+							  	opcode == `xori_in || 
+							  	opcode == `ori_in)?{16'b0, Instruction_Register[15:0]}:
+							{{16{Instruction_Register[15]}}, Instruction_Register[15:0]});//如果是lui指令则做左移，否则符号拓展
+
+//下面这堆assign是给右上角的数据选择器用的
+	assign Branch_after_AND = Branch & Zero_input_to_alu2;
+	assign Zero_input_to_alu2 = (opcode == `bne_in)?~Zero_raw:(//Zero_raw对于bne需要处理一下
+								(opcode == `bgez_in && Instruction_Register[20:16] == `regimm_bgez)?~RF_rdata1[31]:(
+								(opcode == `bltz_in && Instruction_Register[20:16] == `regimm_bltz)?RF_rdata1[31]:(
+								(opcode == `blez_in)?(RF_rdata1[31]|Zero_raw):(
+								(opcode == `bgtz_in)?((!RF_rdata1[31])&(!Zero_raw)):
+									Zero_raw))));
+	assign PC_input_before_jump = (Branch_after_AND == 1)?alu2_result:add_result;
+
+//下面这个是样例图左边的加法器
+	assign add_result = PC_reg + 4;
+
+//下面这个是样例图最右边主存旁边的数据选择器
+	assign RF_wdata = (opcode == `jal_in)?(PC_reg+8):(
 						(MemtoReg == 1)?(
 						((Instruction_Register[31:29] == `L_type_in && in_funct == `lb_in_funct) || 
 						 (Instruction_Register[31:29] == `L_type_in && in_funct == `lh_in_funct))?Read_data_symbol_extension:(
@@ -218,18 +249,104 @@ module riscv_cpu(
 							(vAddr10 == 2'b01)?{RF_rdata2[31:24], Read_data_reg[31:8]}:(
 							(vAddr10 == 2'b10)?{RF_rdata2[31:16], Read_data_reg[31:16]}:{RF_rdata2[31:8], Read_data_reg[31:24]}))):Read_data_reg))
 						)):alu1_result);//先判断是否是直接将PC+8塞进去的指令，然后再判断别的
-	*/
+
+	assign Read_data_symbol_extension = (Instruction_Register[31:29] == `L_type_in && in_funct == `lb_in_funct)?(
+											(vAddr10 == 2'b00)?{{24{Read_data_reg[7]}}, Read_data_reg[7:0]}:(
+											(vAddr10 == 2'b01)?{{24{Read_data_reg[15]}}, Read_data_reg[15:8]}:(
+											(vAddr10 == 2'b10)?{{24{Read_data_reg[23]}}, Read_data_reg[23:16]}:{{24{Read_data_reg[31]}}, Read_data_reg[31:24]}))):(
+										(Instruction_Register[31:29] == `L_type_in && in_funct == `lh_in_funct)?(
+											(vAddr10[1] == 1'b1)?{{16{Read_data_reg[31]}}, Read_data_reg[31:16]}:{{16{Read_data_reg[15]}}, Read_data_reg[15:0]}):Read_data_reg);//将8位/16位Read_data符号扩展
+										
+
+	assign Read_data_logical_extension = (Instruction_Register[31:29] == `L_type_in && in_funct == `lbu_in_funct)?(
+											(vAddr10 == 2'b00)?{24'b0, Read_data_reg[7:0]}:(
+											(vAddr10 == 2'b01)?{24'b0, Read_data_reg[15:8]}:(
+											(vAddr10 == 2'b10)?{24'b0, Read_data_reg[23:16]}:{24'b0, Read_data_reg[31:24]}))):(
+										(Instruction_Register[31:29] == `L_type_in && in_funct == `lhu_in_funct)?(
+											(vAddr10[1] == 1'b1)?{16'b0, Read_data_reg[31:16]}:{16'b0, Read_data_reg[15:0]}):Read_data_reg);//将8位/16位Read_data高位加0拓展为32位
 
 
-	assign RF_waddr = (RegDst == 1)?:rd_address;
-	//regdst=0的时候地址为rd
+	//下面几个assign是为了实现lwl/lwr而设置的
+	assign Write_strb_for_reg_file = (Instruction_Register[31:29] == `L_type_in && in_funct == `lwl_in_funct)?(
+										(vAddr10 == 2'b00)?4'b1000:(
+										(vAddr10 == 2'b01)?4'b1100:(
+										(vAddr10 == 2'b10)?4'b1110:4'b1111))):(
+									 (Instruction_Register[31:29] == `L_type_in && in_funct == `lwr_in_funct)?(
+									 	(vAddr10 == 2'b00)?4'b1111:(
+									 	(vAddr10 == 2'b01)?4'b0111:(
+									 	(vAddr10 == 2'b10)?4'b0011:4'b0001))):4'b1111);
+	assign vAddr10 = Address_raw[1:0];
 
+
+//下面是样例图右边主存的一堆输出信号
+	assign Address_raw = alu1_result;
+	assign Address_align = Address_raw - vAddr10;
+	assign Address_before_always =
+					 ((Instruction_Register[31:29] == `L_type_in && in_funct == `lwl_in_funct)|| 
+					  (Instruction_Register[31:29] == `L_type_in && in_funct == `lwr_in_funct)||
+					  (Instruction_Register[31:29] == `S_type_in && in_funct == `swl_in_funct)||
+					  (Instruction_Register[31:29] == `S_type_in && in_funct == `swr_in_funct)||
+					  (Instruction_Register[31:29] == `S_type_in && in_funct == `sb_in_funct) ||
+					  (Instruction_Register[31:29] == `S_type_in && in_funct == `sh_in_funct) ||
+					  (Instruction_Register[31:29] == `L_type_in && in_funct == `lb_in_funct) ||
+					  (Instruction_Register[31:29] == `L_type_in && in_funct == `lh_in_funct)
+					  )?Address_align:Address_raw;
+
+
+	assign Write_data = (Instruction_Register[31:29] == `S_type_in && in_funct == `swl_in_funct)?(
+							(vAddr10 == 2'b00)?{24'b0, RF_rdata2[31:24]}:(
+							(vAddr10 == 2'b01)?{16'b0, RF_rdata2[31:16]}:(
+							(vAddr10 == 2'b10)?{8'b0,  RF_rdata2[31:8]}:RF_rdata2))):(
+						(Instruction_Register[31:29] == `S_type_in && in_funct == `swr_in_funct)?(
+							(vAddr10 == 2'b00)?RF_rdata2:(
+							(vAddr10 == 2'b01)?{RF_rdata2[23:0], 8'b0}:(
+							(vAddr10 == 2'b10)?{RF_rdata2[15:0], 16'b0}:{RF_rdata2[7:0], 24'b0}))):(
+						(Instruction_Register[31:29] == `S_type_in && in_funct == `sb_in_funct )?(
+							(vAddr10 == 2'b00)?{24'b0, RF_rdata2[7:0]}:(
+							(vAddr10 == 2'b01)?{16'b0, RF_rdata2[7:0], 8'b0}:(
+							(vAddr10 == 2'b10)?{8'b0, RF_rdata2[7:0], 16'b0}:{RF_rdata2[7:0], 24'b0}))):(
+						(Instruction_Register[31:29] == `S_type_in && in_funct == `sh_in_funct )?(
+							(vAddr10[1] == 1'b1)?{RF_rdata2[15:0], 16'b0}:{16'b0, RF_rdata2}):RF_rdata2)));
+
+
+	assign Write_strb = (Instruction_Register[31:29] == `S_type_in && in_funct == `swl_in_funct)?(
+							(vAddr10 == 2'b00)?4'b0001:(
+							(vAddr10 == 2'b01)?4'b0011:(
+							(vAddr10 == 2'b10)?4'b0111:4'b1111))):(
+						(Instruction_Register[31:29] == `S_type_in && in_funct == `swr_in_funct)?(
+							(vAddr10 == 2'b00)?4'b1111:(
+							(vAddr10 == 2'b01)?4'b1110:(
+							(vAddr10 == 2'b10)?4'b1100:4'b1000))):(
+						(Instruction_Register[31:29] == `S_type_in && in_funct == `sb_in_funct )?(
+							(vAddr10 == 2'b00)?4'b0001:(
+							(vAddr10 == 2'b01)?4'b0010:(
+							(vAddr10 == 2'b10)?4'b0100:4'b1000))):(
+						(Instruction_Register[31:29] == `S_type_in && in_funct == `sh_in_funct )?(
+							(vAddr10[1] == 1'b1)?4'b1100:4'b0011):(4'b1111))));//阶段1保持全1即可
+
+
+	assign jump_address = {add_result[31:28], Instruction_Register[25:0], 2'b00};//jmp的地址拼接
+
+	assign PC_input_after_jump =(DonotJump)?(
+								(funct == `jr_funct && opcode == `R_type_in)?alu1_result:(
+								(funct == `jalr_funct && opcode == `R_type_in)?RF_rdata1:PC_input_before_jump
+								)):jump_address;//这个地方实现多个信号选择，jump=1表示不用j类地址，而funct为jr时直接使用alu1的结果
+
+
+	//下面是程序计数器PC的赋值流程
 	/*
-	assign RF_waddr = (Instruction_Register[31:26] == `jal_in)?31:(
-						(RegDst == 1)?Instruction_Register[15:11]:Instruction_Register[20:16]);//此为样例图寄存器堆左边的数据选择器
+	always @(posedge clk or posedge rst) 
+	begin
+		if (rst) 
+			PC_reg <= 32'b0;// reset	
+		else 
+			PC_reg <= PC_input_after_jump;
+	end
 	*/
-
-
+	assign PC = PC_reg;
+	assign RF_wen = RF_wen_reg;
+	assign Instruction_for_submodule = Instruction_Register;
+	assign RF_wdata_final = (opcode == `R_type_in && funct == `jalr_funct)?RF_wdata_just_for_jalr:RF_wdata;//考虑jalr这个奇葩指令之后的最终信号
 
 //*****************************sub_modules************************************************************************
 	ALU_controller act1(.funct(funct), .ALUop_raw(ALUop_raw), .ALUop(ALUop));//书上样例的“ALU控制”模块
