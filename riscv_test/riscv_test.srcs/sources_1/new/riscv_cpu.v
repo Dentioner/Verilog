@@ -427,20 +427,11 @@ module riscv_cpu(
 								(opcode == `jalr_opcode)?{alu1_result[31:1], 1'b0}:PC_input_before_jump):
 								jump_address;//这个地方实现多个信号选择，jump=1表示不用j类地址，而funct为jr时直接使用alu1的结果
 
-	//下面是程序计数器PC的赋值流程
-	/*
-	always @(posedge clk or posedge rst) 
-	begin
-		if (rst) 
-			PC_reg <= 32'b0;// reset	
-		else 
-			PC_reg <= PC_input_after_jump;
-	end
-	*/
+
 	assign PC = PC_reg;
 	assign RF_wen = RF_wen_reg;
 	
-	assign RF_wdata_final = (opcode == `jalr_opcode)?RF_wdata_just_for_jalr:RF_wdata;//考虑jalr这个奇葩指令之后的最终信号
+	assign RF_wdata_final = (opcode == `jalr_opcode || opcode == `jal_opcode)?RF_wdata_just_for_jalr:RF_wdata;//考虑jalr这个奇葩指令之后的最终信号
 
 //*****************************sub_modules************************************************************************
 	ALU_controller act1(.funct3(funct3), .ALUop_raw(ALUop_raw), .ALUop(ALUop));//书上样例的“ALU控制”模块
@@ -509,8 +500,7 @@ module riscv_cpu(
 					cpu_status_next = `LD;
 				else if (opcode == `S_type_opcode)//Store
 				 	cpu_status_next = `ST;
-				else if (opcode == `B_type_opcode||//跳转指令						 
-						 opcode == `jal_opcode)
+				else if (opcode == `B_type_opcode)//Branch
 					cpu_status_next = `IF;
 				else
 					cpu_status_next = `WB;//其他指令
@@ -567,18 +557,7 @@ module riscv_cpu(
 			`ID:
 				RF_wen_reg = 1'b0;
 			`EX:
-			begin
-
-				if (opcode == `jal_opcode)
-				begin
-					RF_wen_reg = RF_wen_before_always;	
-				end
-				else 
-				begin
-					RF_wen_reg = 1'b0;					
-				end
-			end
-
+				RF_wen_reg = 1'b0;		
 			`ST:
 				RF_wen_reg = 1'b0;
 			`LD:				
