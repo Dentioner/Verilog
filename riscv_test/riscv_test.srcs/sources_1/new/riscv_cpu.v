@@ -157,7 +157,7 @@ module riscv_cpu(
 //******************************wire & reg definition************************************************************
 
 	wire [6:0] opcode;
-	wire [10:0] control_data;
+	wire [11:0] control_data;
 
 	wire DonotJump;
 	wire RegDst;
@@ -188,7 +188,7 @@ module riscv_cpu(
 
 	
 
-	wire [31:0] symbol_extension;
+	
 	wire [31:0] alu1_a_raw;
 	wire [31:0] alu1_b_raw;
 
@@ -247,8 +247,7 @@ module riscv_cpu(
 
 	wire [31:0] Address_before_always;
 	wire RF_wen_before_always;
-	wire MemRead_wire;
-	wire MemWrite_wire;
+
 	wire [31:0] Instruction_for_submodule;
 
 
@@ -434,7 +433,7 @@ module riscv_cpu(
 	assign RF_wdata_final = (opcode == `jalr_opcode || opcode == `jal_opcode)?RF_wdata_just_for_jalr:RF_wdata;//考虑jalr这个奇葩指令之后的最终信号
 
 //*****************************sub_modules************************************************************************
-	ALU_controller act1(.funct3(funct3), .ALUop_raw(ALUop_raw), .ALUop(ALUop));//书上样例的“ALU控制”模块
+	ALU_controller act1(.funct3(funct3), .ALUop_raw(ALUop_raw), .ALUop(ALUop), .funct7(funct7));//书上样例的“ALU控制”模块
 	shifter s1(.funct3(funct3), .shamt(shamt), .alu_a_raw(alu1_a_raw), .alu_b_raw(alu1_b_raw), .typecode(opcode), .alu_a(alu1_a), .alu_b(alu1_b), .funct7(funct7));//最下面新增的移位模块
 
 
@@ -822,7 +821,8 @@ endmodule
 
 
 module ALU_controller(
-	input [5:0] funct3,
+	input [2:0] funct3,
+	input [6:0] funct7,
 	input [3:0]	ALUop_raw,
 	output [3:0] ALUop
 );
@@ -868,7 +868,7 @@ endmodule
 
 
 module shifter(
-	input [5:0] funct,
+	input [2:0] funct3,
 	input [4:0] shamt,
 	input [31:0] alu_a_raw,
 	input [31:0] alu_b_raw,
