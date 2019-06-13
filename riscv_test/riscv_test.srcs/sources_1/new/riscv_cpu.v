@@ -73,7 +73,7 @@
 `define sh_funct3		3'b001
 `define sw_funct3		3'b010
 
-
+`define S_type_out		12'b101000100010
 //****************************************************************B-type************************************************************************************************
 `define B_type_opcode	7'b1100011
 `define beq_funct3		3'b000
@@ -156,6 +156,8 @@ module riscv_cpu(
 	wire [11:0] jalr_imm;//jalr的立即数
 	wire [11:0] B_type_imm;
 	wire [11:0]	L_type_imm;
+	wire [11:0] S_type_imm;
+	wire [11:0] I_type_imm;
 
 	wire [31:0] symbol_extension;
 	wire [31:0] alu1_a_raw;
@@ -222,6 +224,9 @@ module riscv_cpu(
 	assign jalr_imm 	= Instruction_Register[31:20];
 	assign B_type_imm 	= {Instruction_Register[31], Instruction_Register[7], Instruction_Register[30:25], Instruction_Register[11:8]};
 	assign L_type_imm 	= Instruction_Register[31:20];
+	assign S_type_imm 	= {Instruction_Register[31:25], Instruction_Register[11:7]};
+	assign I_type_imm 	= Instruction_Register[31:20];
+
 
 	//下面这堆assign是书上样例的“控制”模块
 	assign control_data =   (opcode == `R_type_in)?`R_type_out:(
@@ -293,11 +298,12 @@ module riscv_cpu(
 	assign symbol_extension = (opcode == `lui_opcode)?{U_type_imm, 12'b0}:(
 							  (opcode == `jalr_opcode)?{{20{jalr_imm[11]}}, jalr_imm}:(
 							  (opcode == `L_type_opcode)?{{20{L_type_imm[11]}}, L_type_imm}:(
+							  (opcode == `S_type_opcode)?{{20{S_type_imm[11]}}, S_type_imm}:(
 							  (opcode == `sltiu_in || 
 							  	opcode == `andi_in ||
 							  	opcode == `xori_in || 
 							  	opcode == `ori_in)?{16'b0, Instruction_Register[15:0]}:
-							{{16{Instruction_Register[15]}}, Instruction_Register[15:0]})));//如果是lui指令则做左移，否则符号拓展
+							{{16{Instruction_Register[15]}}, Instruction_Register[15:0]}))));//如果是lui指令则做左移，否则符号拓展
 
 //下面这堆assign是给右上角的数据选择器用的
 	assign Branch_after_AND = Branch & Zero_input_to_alu2;
@@ -367,8 +373,8 @@ module riscv_cpu(
 					  (Instruction_Register[31:29] == `L_type_in && in_funct == `lwr_in_funct)||
 					  (Instruction_Register[31:29] == `S_type_in && in_funct == `swl_in_funct)||
 					  (Instruction_Register[31:29] == `S_type_in && in_funct == `swr_in_funct)||
-					  (Instruction_Register[31:29] == `S_type_in && in_funct == `sb_in_funct) ||
-					  (Instruction_Register[31:29] == `S_type_in && in_funct == `sh_in_funct) ||
+					  (opcode == `S_type_opcode && funct3 == `sb_funct3) ||
+					  (opcode == `S_type_opcode && funct3 == `sh_funct3) ||
 					  (opcode == `L_type_opcode && funct3 == `lb_funct3) ||
 					  (opcode == `L_type_opcode && funct3 == `lh_funct3)
 					  )?Address_align:Address_raw;
@@ -382,11 +388,11 @@ module riscv_cpu(
 							(vAddr10 == 2'b00)?RF_rdata2:(
 							(vAddr10 == 2'b01)?{RF_rdata2[23:0], 8'b0}:(
 							(vAddr10 == 2'b10)?{RF_rdata2[15:0], 16'b0}:{RF_rdata2[7:0], 24'b0}))):(
-						(Instruction_Register[31:29] == `S_type_in && in_funct == `sb_in_funct )?(
+						(opcode == `S_type_opcode && funct3 == `sb_funct3)?(
 							(vAddr10 == 2'b00)?{24'b0, RF_rdata2[7:0]}:(
 							(vAddr10 == 2'b01)?{16'b0, RF_rdata2[7:0], 8'b0}:(
 							(vAddr10 == 2'b10)?{8'b0, RF_rdata2[7:0], 16'b0}:{RF_rdata2[7:0], 24'b0}))):(
-						(Instruction_Register[31:29] == `S_type_in && in_funct == `sh_in_funct )?(
+						(opcode == `S_type_opcode && funct3 == `sh_funct3)?(
 							(vAddr10[1] == 1'b1)?{RF_rdata2[15:0], 16'b0}:{16'b0, RF_rdata2}):RF_rdata2)));
 
 
@@ -398,11 +404,11 @@ module riscv_cpu(
 							(vAddr10 == 2'b00)?4'b1111:(
 							(vAddr10 == 2'b01)?4'b1110:(
 							(vAddr10 == 2'b10)?4'b1100:4'b1000))):(
-						(Instruction_Register[31:29] == `S_type_in && in_funct == `sb_in_funct )?(
+						(opcode == `S_type_opcode && funct3 == `sb_funct3 )?(
 							(vAddr10 == 2'b00)?4'b0001:(
 							(vAddr10 == 2'b01)?4'b0010:(
 							(vAddr10 == 2'b10)?4'b0100:4'b1000))):(
-						(Instruction_Register[31:29] == `S_type_in && in_funct == `sh_in_funct )?(
+						(opcode == `S_type_opcode && funct3 == `sh_funct3)?(
 							(vAddr10[1] == 1'b1)?4'b1100:4'b0011):(4'b1111))));//阶段1保持全1即可
 
 
