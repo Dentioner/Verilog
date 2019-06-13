@@ -888,11 +888,11 @@ module shifter(
 	wire [31:0] srai_answer;
 					
 
-	assign sll_answer  = alu_a_raw << shamt;
-	assign srl_answer  = alu_a_raw >> shamt;
+	assign sll_answer  = alu_a_raw << alu_b_raw[4:0];
+	assign srl_answer  = alu_a_raw >> alu_b_raw[4:0];
 	//assign sra_answer  = {{shamt{alu_b_raw[31]}}, alu_b_raw[31:32-shamt]};
-	assign sra_answer = (alu_a_raw[31])?(~((~alu_a_raw) >> shamt)):srl_answer;//取反逻辑右移之后再取反就行了
-	
+	assign sra_answer = (alu_a_raw[31])?(~((~alu_a_raw) >> alu_b_raw[4:0])):srl_answer;//取反逻辑右移之后再取反就行了
+	//assign srav_answer = (alu_b_raw[31])?(~((~alu_b_raw) >> alu_a_raw[4:0])):srlv_answer;
 	//assign srav_answer = {{alu_a_raw{alu_b_raw[31]}}, alu_b_raw[31:32 - alu_a_raw]};
 	
 	assign slli_answer = alu_a_raw << shamt;
