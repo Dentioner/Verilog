@@ -248,11 +248,11 @@ module riscv_cpu(
 	wire [31:0] Address_before_always;
 	wire RF_wen_before_always;
 
-	wire [31:0] Instruction_for_submodule;
+
 
 
 //统一指令用
-	wire [2:0] in_funct;
+	
 
 //由于jalr要求与别的j指令写寄存器的时候不一样，因此只能单独处理它了
 	reg [31:0] RF_wdata_just_for_jalr;//单独给jalr的reg
@@ -331,7 +331,7 @@ module riscv_cpu(
 	assign alu1_b_raw = (ALUsrc == 1)?symbol_extension:RF_rdata2;//此为寄存器堆右边的数据选择器
 						
 	assign alu2_a = (opcode == `B_type_opcode)?PC_reg:add_result;
-	assign alu2_b = (opcode == `B_type_opcode)?B_type_imm:symbol_extension<<2;//符号扩展信号左移2位
+	assign alu2_b = (opcode == `B_type_opcode)?{{19{B_type_imm[11]}}, B_type_imm, 1'b0}:symbol_extension<<2;//符号扩展信号左移2位
 
 
 //下面这堆assign是样例图寄存器下面的“符号扩展”模块
