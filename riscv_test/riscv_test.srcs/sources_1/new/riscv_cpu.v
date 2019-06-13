@@ -28,7 +28,7 @@
 `define R_type_opcode	7'b0110011
 `define add_sub_funct3	3'b000
 `define sll_funct3 		3'b001
-`define slr_funct3 		3'b010
+`define slt_funct3 		3'b010
 `define sltu_funct3 	3'b011
 `define xor_funct3 		3'b100
 `define srl_sra_funct3	3'b101
@@ -40,6 +40,9 @@
 
 `define srl_funct7 		7'b0000000
 `define sra_funct7 		7'b0100000
+
+`define R_type_out  	12'b110010000100
+
 
 //****************************************************************I_type************************************************************************************************
 `define I_type_opcode	7'b0010011
@@ -65,6 +68,8 @@
 `define andi_out		12'b111010000000
 
 `define slli_out		12'b111010000010
+`define srli_srai_out 	12'b111010000010
+
 
 //****************************************************************L_type************************************************************************************************
 `define L_type_opcode	7'b0000011
@@ -99,12 +104,25 @@
 `define auipc_opcode	7'b0010111
 
 `define lui_out			12'b111010000010
+`define auipc_out		12'b111010000010
 //****************************************************************J_type************************************************************************************************
 `define jal_opcode		7'b1101111
 `define jalr_opcode		7'b1100111
 
 `define jal_out			12'b010010000010
 `define jalr_out 		12'b111010000010
+
+//****************************************************************cpu_status************************************************************************************************
+
+`define IF 		3'b000
+`define IW 		3'b001
+`define ID 		3'b010
+`define EX 		3'b011
+`define ST 		3'b100
+`define LD 		3'b101
+`define RDW 	3'b110
+`define WB 		3'b111
+
 
 module riscv_cpu(
 	input  rst,
@@ -158,7 +176,7 @@ module riscv_cpu(
 	wire [4:0] rs1_address;
 	wire [4:0] rs2_address;
 	wire [2:0] funct3;
-	wire [6:0] funct7;
+	wire [6:0] funct7;//由于某些指令共用一个funct3导致需要额外区分一下
 	wire [19:0] U_type_imm;//u型指令使用的立即数
 	wire [19:0]	jal_imm;//jal使用的offset
 	wire [31:0] jal_offset_ex;//jal的偏移
@@ -168,7 +186,7 @@ module riscv_cpu(
 	wire [11:0] S_type_imm;
 	wire [11:0] I_type_imm;
 
-	wire [6:0] identifier;//由于某些指令共用一个funct3导致需要额外区分一下
+	
 
 	wire [31:0] symbol_extension;
 	wire [31:0] alu1_a_raw;
@@ -218,8 +236,28 @@ module riscv_cpu(
 	wire [31:0] Address_raw;//lwl/lwr使用
 	wire [31:0] Address_align;
 
-
+	//多周期用
+	reg [2:0] cpu_status_now;
+	reg [2:0] cpu_status_next;
+	//reg clk_past;
+	reg [31:0] PC_reg;
+	reg RF_wen_reg;
 	reg [31:0] Instruction_Register;
+	reg [31:0] Read_data_reg;
+
+	wire [31:0] Address_before_always;
+	wire RF_wen_before_always;
+	wire MemRead_wire;
+	wire MemWrite_wire;
+	wire [31:0] Instruction_for_submodule;
+
+
+//统一指令用
+	wire [2:0] in_funct;
+
+//由于jalr要求与别的j指令写寄存器的时候不一样，因此只能单独处理它了
+	reg [31:0] RF_wdata_just_for_jalr;//单独给jalr的reg
+	wire [31:0] RF_wdata_final;//最终给reg_file的值，这个是在处理jalr指令之后的
 
 
 //*****************************assignment for controlling signals************************************************************************
@@ -239,35 +277,24 @@ module riscv_cpu(
 	assign S_type_imm 	= {Instruction_Register[31:25], Instruction_Register[11:7]};
 	assign I_type_imm 	= Instruction_Register[31:20];
 
-	assign identifier 	= Instruction_Register[31:25];
+	
 	//下面这堆assign是书上样例的“控制”模块
-	assign control_data =   (opcode == `R_type_in)?`R_type_out:(
+	assign control_data =   (opcode == `R_type_opcode)?`R_type_out:(
 							(opcode == `L_type_opcode)?`L_type_out:(
-							(opcode == `S_type_opcode)?`S_type_out:(			
-						
-							
-
-							(opcode == `B_type_opcode)   ?`B_type_out:(
-
-
-							(opcode == `addiu_in) ?`addiu_out :(							
-							(opcode == `lui_opcode)   ?`lui_out   :(							
-							
-												
-							
-							
-							
-
+							(opcode == `S_type_opcode)?`S_type_out:(
+							(opcode == `B_type_opcode)?`B_type_out:(
+							(opcode == `auipc_opcode) ?`auipc_out :(							
+							(opcode == `lui_opcode)   ?`lui_out   :(
 							(opcode == `jal_opcode)   ?`jal_out   :(
-							(opcode == `I_type_opcode && funct3 == `addi_funct3)?`addiu_out:(
-							(opcode == `I_type_opcode && funct3 == `slti_funct3)?`slti_out:(
-							(opcode == `I_type_opcode && funct3 == `sltiu_funct3) ?`sltiu_out :(
-							(opcode == `I_type_opcode && funct3 == `xori_funct3) ?`xori_out :(
-							(opcode == `I_type_opcode && funct3 == `ori_funct3) ?`ori_out :(
-							(opcode == `I_type_opcode && funct3 == `andi_funct3) ?`andi_out :(
-							(opcode == `I_type_opcode && funct3 == `slli_funct3)?`slli_out :(
-
-							(opcode == `jalr_opcode)	   ?`jalr_out	  :12'b10000000000))))))))))))));
+							(opcode == `I_type_opcode && funct3 == `addi_funct3)		?`addiu_out		:(
+							(opcode == `I_type_opcode && funct3 == `slti_funct3)		?`slti_out 		:(
+							(opcode == `I_type_opcode && funct3 == `sltiu_funct3)		?`sltiu_out		:(
+							(opcode == `I_type_opcode && funct3 == `xori_funct3)		?`xori_out		:(
+							(opcode == `I_type_opcode && funct3 == `ori_funct3)			?`ori_out		:(
+							(opcode == `I_type_opcode && funct3 == `andi_funct3)		?`andi_out		:(
+							(opcode == `I_type_opcode && funct3 == `slli_funct3)		?`slli_out		:(
+							(opcode == `I_type_opcode && funct3 == `srli_srai_funct3)	?`srli_srai_out	:(
+							(opcode == `jalr_opcode)	   ?`jalr_out	  :12'b10000000000)))))))))))))));
 
 
 
@@ -289,33 +316,27 @@ module riscv_cpu(
 	
 
 //下面这堆assign是寄存器堆使用的
-	assign RF_raddr1 = rs1_address;
+	assign RF_raddr1 = (opcode == `lui_opcode)?0:rs1_address;
 	assign RF_raddr2 = rs2_address;
 
 	assign RF_waddr = (RegDst == 0)?rs2_address:rd_address;//此为样例图寄存器堆左边的数据选择器
 	//regdst = 0则为rs2，regdst=1则为rd
 	
 
-	assign RF_wen_before_always = 
-					(RF_waddr == 32'b0)?1'b0:(
-					(opcode == `R_type_in && funct == `movn_funct && RF_rdata2 == 32'b0)?1'b0:(//如果执行的是movn指令，而且rt=0时，写使能低电平
-					(opcode == `R_type_in && funct == `movz_funct && RF_rdata2 != 32'b0)?1'b0://如果执行的是movz指令，而且rt≠0时，写使能低电平
-					RegWrite));//好像仿真的时候认为写地址为0的时候是不能写的，
+	assign RF_wen_before_always = (RF_waddr == 32'b0)?1'b0:RegWrite;//好像仿真的时候认为写地址为0的时候是不能写的，
 	//但是实际上在regfile模块里面都保证了写地址为0的时候不接受外来信号
 	//为了让仿真通过只好再把这个地方加点条件保证RF_wen不能在写地址为0的时候=1了。
 
 //下面这堆assign是两个alu使用的
-	assign alu1_a_raw = RF_rdata1;//和mips不同，这里jalr也要使用RF_data的数据，而不是PC的
-	assign alu1_b_raw = (ALUsrc == 1)?symbol_extension:(
-						(opcode == `R_type_in && funct == `movn_funct)?32'b0://如果ALUSrc=0，说明操作数b不是16位那边过来的，这时候再判断是不是在执行movn指令，
-						RF_rdata2);//如果是movn，则将操作数b变成0，否则照常输入RF_data2
-						//此为寄存器堆右边的数据选择器
+	assign alu1_a_raw = (opcode == `auipc_opcode)?(add_result - 4):RF_rdata1;//和mips不同，这里jalr也要使用RF_data的数据，而不是PC的，但是新增的auipc则要加PC
+	assign alu1_b_raw = (ALUsrc == 1)?symbol_extension:RF_rdata2;//此为寄存器堆右边的数据选择器
+						
 	assign alu2_a = (opcode == `B_type_opcode)?PC_reg:add_result;
 	assign alu2_b = (opcode == `B_type_opcode)?B_type_imm:symbol_extension<<2;//符号扩展信号左移2位
 
 
 //下面这堆assign是样例图寄存器下面的“符号扩展”模块
-	assign symbol_extension = (opcode == `lui_opcode)?{U_type_imm, 12'b0}:(
+	assign symbol_extension = (opcode == `lui_opcode || opcode == `auipc_opcode)?{U_type_imm, 12'b0}:(
 							  (opcode == `jalr_opcode)?{{20{jalr_imm[11]}}, jalr_imm}:(
 							  (opcode == `L_type_opcode)?{{20{L_type_imm[11]}}, L_type_imm}:(
 							  (opcode == `S_type_opcode)?{{20{S_type_imm[11]}}, S_type_imm}:(
@@ -326,7 +347,7 @@ module riscv_cpu(
 							  		 funct3 == `ori_funct3  ||
 							  		 funct3 == `andi_funct3))?{{20{I_type_imm[11]}}, I_type_imm}:(
 							  (opcode == `I_type_opcode && funct3 == `sltiu_funct3)?{20'b0, I_type_imm}:
-							{{16{Instruction_Register[15]}}, Instruction_Register[15:0]})))));//如果是lui指令则做左移，否则符号拓展
+							{{20{Instruction_Register[31]}}, Instruction_Register[31:20]})))));//如果是lui指令则做左移，否则符号拓展
 
 //下面这堆assign是给右上角的数据选择器用的
 	assign Branch_after_AND = Branch & Zero_input_to_alu2;
@@ -348,17 +369,7 @@ module riscv_cpu(
 						 (opcode == `L_type_opcode && funct3 == `lh_funct3))?Read_data_symbol_extension:(
 
 						((opcode == `L_type_opcode && funct3 == `lbu_funct3) || 
-						 (opcode == `L_type_opcode && funct3 == `lhu_funct3))?Read_data_logical_extension:(
-
-						(Instruction_Register[31:29] == `L_type_in && in_funct == `lwl_in_funct)?(
-							(vAddr10 == 2'b00)?{Read_data_reg[7:0], RF_rdata2[23:0]}:(
-							(vAddr10 == 2'b01)?{Read_data_reg[15:0], RF_rdata2[15:0]}:(
-							(vAddr10 == 2'b10)?{Read_data_reg[23:0], RF_rdata2[7:0]}:Read_data_reg))):(
-						(Instruction_Register[31:29] == `L_type_in && in_funct == `lwr_in_funct)?(
-							(vAddr10 == 2'b00)?Read_data_reg:(
-							(vAddr10 == 2'b01)?{RF_rdata2[31:24], Read_data_reg[31:8]}:(
-							(vAddr10 == 2'b10)?{RF_rdata2[31:16], Read_data_reg[31:16]}:{RF_rdata2[31:8], Read_data_reg[31:24]}))):Read_data_reg))
-						)):alu1_result);//先判断是否是直接将PC+8塞进去的指令，然后再判断别的
+						 (opcode == `L_type_opcode && funct3 == `lhu_funct3))?Read_data_logical_extension:Read_data_reg)):alu1_result);//先判断是否是直接将PC+8塞进去的指令，然后再判断别的
 
 	assign Read_data_symbol_extension = (opcode == `L_type_opcode && funct3 == `lb_funct3)?(
 											(vAddr10 == 2'b00)?{{24{Read_data_reg[7]}}, Read_data_reg[7:0]}:(
@@ -377,14 +388,7 @@ module riscv_cpu(
 
 
 	//下面几个assign是为了实现lwl/lwr而设置的
-	assign Write_strb_for_reg_file = (Instruction_Register[31:29] == `L_type_in && in_funct == `lwl_in_funct)?(
-										(vAddr10 == 2'b00)?4'b1000:(
-										(vAddr10 == 2'b01)?4'b1100:(
-										(vAddr10 == 2'b10)?4'b1110:4'b1111))):(
-									 (Instruction_Register[31:29] == `L_type_in && in_funct == `lwr_in_funct)?(
-									 	(vAddr10 == 2'b00)?4'b1111:(
-									 	(vAddr10 == 2'b01)?4'b0111:(
-									 	(vAddr10 == 2'b10)?4'b0011:4'b0001))):4'b1111);
+	assign Write_strb_for_reg_file = 4'b1111;
 	assign vAddr10 = Address_raw[1:0];
 
 
@@ -392,57 +396,36 @@ module riscv_cpu(
 	assign Address_raw = alu1_result;
 	assign Address_align = Address_raw - vAddr10;
 	assign Address_before_always =
-					 ((Instruction_Register[31:29] == `L_type_in && in_funct == `lwl_in_funct)|| 
-					  (Instruction_Register[31:29] == `L_type_in && in_funct == `lwr_in_funct)||
-					  (Instruction_Register[31:29] == `S_type_in && in_funct == `swl_in_funct)||
-					  (Instruction_Register[31:29] == `S_type_in && in_funct == `swr_in_funct)||
-					  (opcode == `S_type_opcode && funct3 == `sb_funct3) ||
+					 ((opcode == `S_type_opcode && funct3 == `sb_funct3) ||
 					  (opcode == `S_type_opcode && funct3 == `sh_funct3) ||
 					  (opcode == `L_type_opcode && funct3 == `lb_funct3) ||
 					  (opcode == `L_type_opcode && funct3 == `lh_funct3)
 					  )?Address_align:Address_raw;
 
 
-	assign Write_data = (Instruction_Register[31:29] == `S_type_in && in_funct == `swl_in_funct)?(
-							(vAddr10 == 2'b00)?{24'b0, RF_rdata2[31:24]}:(
-							(vAddr10 == 2'b01)?{16'b0, RF_rdata2[31:16]}:(
-							(vAddr10 == 2'b10)?{8'b0,  RF_rdata2[31:8]}:RF_rdata2))):(
-						(Instruction_Register[31:29] == `S_type_in && in_funct == `swr_in_funct)?(
-							(vAddr10 == 2'b00)?RF_rdata2:(
-							(vAddr10 == 2'b01)?{RF_rdata2[23:0], 8'b0}:(
-							(vAddr10 == 2'b10)?{RF_rdata2[15:0], 16'b0}:{RF_rdata2[7:0], 24'b0}))):(
-						(opcode == `S_type_opcode && funct3 == `sb_funct3)?(
+	assign Write_data = (opcode == `S_type_opcode && funct3 == `sb_funct3)?(
 							(vAddr10 == 2'b00)?{24'b0, RF_rdata2[7:0]}:(
 							(vAddr10 == 2'b01)?{16'b0, RF_rdata2[7:0], 8'b0}:(
 							(vAddr10 == 2'b10)?{8'b0, RF_rdata2[7:0], 16'b0}:{RF_rdata2[7:0], 24'b0}))):(
 						(opcode == `S_type_opcode && funct3 == `sh_funct3)?(
-							(vAddr10[1] == 1'b1)?{RF_rdata2[15:0], 16'b0}:{16'b0, RF_rdata2}):RF_rdata2)));
+							(vAddr10[1] == 1'b1)?{RF_rdata2[15:0], 16'b0}:{16'b0, RF_rdata2}):RF_rdata2);
 
 
-	assign Write_strb = (Instruction_Register[31:29] == `S_type_in && in_funct == `swl_in_funct)?(
-							(vAddr10 == 2'b00)?4'b0001:(
-							(vAddr10 == 2'b01)?4'b0011:(
-							(vAddr10 == 2'b10)?4'b0111:4'b1111))):(
-						(Instruction_Register[31:29] == `S_type_in && in_funct == `swr_in_funct)?(
-							(vAddr10 == 2'b00)?4'b1111:(
-							(vAddr10 == 2'b01)?4'b1110:(
-							(vAddr10 == 2'b10)?4'b1100:4'b1000))):(
-						(opcode == `S_type_opcode && funct3 == `sb_funct3 )?(
+	assign Write_strb = (opcode == `S_type_opcode && funct3 == `sb_funct3 )?(
 							(vAddr10 == 2'b00)?4'b0001:(
 							(vAddr10 == 2'b01)?4'b0010:(
 							(vAddr10 == 2'b10)?4'b0100:4'b1000))):(
 						(opcode == `S_type_opcode && funct3 == `sh_funct3)?(
-							(vAddr10[1] == 1'b1)?4'b1100:4'b0011):(4'b1111))));//阶段1保持全1即可
+							(vAddr10[1] == 1'b1)?4'b1100:4'b0011):(4'b1111));//阶段1保持全1即可
 
 
 	assign jal_offset_ex = {{11{jal_imm[19]}}, jal_imm, 1'b0};
 	assign jump_address = PC_reg + jal_offset_ex;//jmp的地址拼接
 
+	
 	assign PC_input_after_jump =(DonotJump)?(
-								(funct == `jr_funct && opcode == `R_type_in)?alu1_result:(
-								(opcode == `jalr_opcode)?{alu1_result[31:1], 1'b0}}:PC_input_before_jump
-								)):jump_address;//这个地方实现多个信号选择，jump=1表示不用j类地址，而funct为jr时直接使用alu1的结果
-
+								(opcode == `jalr_opcode)?{alu1_result[31:1], 1'b0}:PC_input_before_jump):
+								jump_address;//这个地方实现多个信号选择，jump=1表示不用j类地址，而funct为jr时直接使用alu1的结果
 
 	//下面是程序计数器PC的赋值流程
 	/*
@@ -461,7 +444,7 @@ module riscv_cpu(
 
 //*****************************sub_modules************************************************************************
 	ALU_controller act1(.funct3(funct3), .ALUop_raw(ALUop_raw), .ALUop(ALUop));//书上样例的“ALU控制”模块
-	shifter s1(.funct3(funct3), .shamt(shamt), .alu_a_raw(alu1_a_raw), .alu_b_raw(alu1_b_raw), .typecode(opcode), .alu_a(alu1_a), .alu_b(alu1_b), .identifier(identifier));//最下面新增的移位模块
+	shifter s1(.funct3(funct3), .shamt(shamt), .alu_a_raw(alu1_a_raw), .alu_b_raw(alu1_b_raw), .typecode(opcode), .alu_a(alu1_a), .alu_b(alu1_b), .funct7(funct7));//最下面新增的移位模块
 
 
 	alu alu1(.A(alu1_a), .B(alu1_b), .ALUop(ALUop), .Zero(Zero_raw),  .Result(alu1_result), .Overflow(alu1_overflow), .CarryOut(alu1_carryout));//overflow 和 carryout的信号暂时没引出
@@ -471,6 +454,386 @@ module riscv_cpu(
 
 	reg_file r1(.clk(clk), .rst(rst), .waddr(RF_waddr), .raddr1(RF_raddr1), .raddr2(RF_raddr2), .wen(RF_wen), .wdata(RF_wdata_final), .rdata1(RF_rdata1), .rdata2(RF_rdata2));    //, .Write_strb(Write_strb_for_reg_file));
 	//此为样例图里面的寄存器堆
+
+
+
+//*****************************state_machines************************************************************************
+
+
+	//always @(clk)
+		//clk_past <= ~clk;//人为实现上升沿
+
+	always @(posedge clk) //always1
+	begin
+		if (rst) 
+		begin
+			cpu_status_now <= `IF; // reset
+			//cpu_status_next <= `IF;
+			
+			
+		end
+		else 
+		begin
+			cpu_status_now <= cpu_status_next;	
+		end
+	end
+
+
+	always @* //always2_for_nextstatus
+	begin
+		cpu_status_next = cpu_status_now;//default
+		 
+		
+		case(cpu_status_now)
+			`IF:
+			begin
+				if (Inst_Req_Ack)
+					cpu_status_next = `IW;
+				else 
+					cpu_status_next = cpu_status_now;
+			end
+			`IW:
+			begin
+				if (Inst_Valid)
+					cpu_status_next = `ID;
+				else 
+					cpu_status_next = cpu_status_now;
+			end
+			`ID:
+			begin
+				cpu_status_next = `EX;
+			end
+			`EX:
+			begin
+				if (opcode == `L_type_opcode)//Load
+					cpu_status_next = `LD;
+				else if (opcode == `S_type_opcode)//Store
+				 	cpu_status_next = `ST;
+				else if (opcode == `B_type_opcode||//跳转指令						 
+						 opcode == `jal_opcode)
+					cpu_status_next = `IF;
+				else
+					cpu_status_next = `WB;//其他指令
+
+			end
+
+			`ST:
+			begin
+				if (Mem_Req_Ack)
+					cpu_status_next = `IF;
+				else 
+					cpu_status_next = cpu_status_now;
+
+			end
+			`LD:
+			begin
+				if (Mem_Req_Ack)
+					cpu_status_next = `RDW;
+				else 
+					cpu_status_next = cpu_status_now;
+			end
+			`RDW:
+			begin
+				if (Read_data_Valid)
+				begin
+					cpu_status_next = `WB;
+				end
+				else 
+					cpu_status_next = cpu_status_now;
+				
+			end
+			`WB:
+			begin
+				cpu_status_next = `IF;
+				
+			end
+			default:
+			begin
+				cpu_status_next = `IF;
+				
+			end
+		endcase	
+	end
+
+
+	always @* //always2_for_RFwen
+	begin
+		RF_wen_reg = 1'b0;//default
+			case(cpu_status_now)
+			`IF:	
+				RF_wen_reg = 1'b0;
+			`IW:
+				RF_wen_reg = 1'b0;//记得修改别处的RF_wen信号
+			`ID:
+				RF_wen_reg = 1'b0;
+			`EX:
+			begin
+
+				if (opcode == `jal_opcode)
+				begin
+					RF_wen_reg = RF_wen_before_always;	
+				end
+				else 
+				begin
+					RF_wen_reg = 1'b0;					
+				end
+			end
+
+			`ST:
+				RF_wen_reg = 1'b0;
+			`LD:				
+				RF_wen_reg = 1'b0;
+			`RDW:
+				RF_wen_reg = 1'b0;//记得修改别处的RF_wen信号
+				//Address = Address_before_always;
+			`WB:
+				begin
+					RF_wen_reg = RF_wen_before_always;			
+				end
+			default:				
+				RF_wen_reg = 1'b0;			
+			endcase	
+	end
+
+
+
+
+
+	always @(posedge clk) //always3_for_PC
+	begin
+		if (rst) 
+		begin
+			PC_reg <= 32'b0;// reset			
+		end
+		else 
+		begin
+			if (cpu_status_now == `EX)
+				PC_reg <= PC_input_after_jump;
+		end
+	end
+
+	always @(posedge clk) //always3_for_Inst_Req_Valid
+	begin
+		if (rst) 
+		begin
+			Inst_Req_Valid <= 1'b0;// reset			
+		end
+		else 
+		begin
+			case(cpu_status_now)
+			`IF:
+			begin
+				if (Inst_Req_Ack)
+				begin
+					Inst_Req_Valid <= 1'b0;					
+				end
+				else
+				begin
+					Inst_Req_Valid <= 1'b1;					
+				end	
+			end
+			`EX:
+			begin
+				if (cpu_status_next == `IF)
+				begin
+					Inst_Req_Valid <= 1'b1;
+				end
+			end
+			`ST:
+			begin
+				if (Mem_Req_Ack)//说明是上升沿
+				begin
+					Inst_Req_Valid <= 1'b1;				
+				end	
+			end
+			
+			`WB:
+				Inst_Req_Valid <= 1'b1;
+			default:
+				;
+			endcase
+		end
+	end
+
+	always @(posedge clk) //always3_Inst_Ack
+	begin
+		if (rst) 
+		begin			
+			Inst_Ack <= 1'b1;			
+			//Address <= Address_before_always;
+		end
+		else 
+		begin
+			case(cpu_status_now)
+			`IF:
+			begin
+				if (Inst_Req_Ack)
+				begin					
+					Inst_Ack <= 1'b1;
+				end
+				else
+				begin					
+					Inst_Ack <= 1'b0;//在这里加这个是为了避免和always3里面的赋值出现竞争
+				end	
+			end
+			`IW:
+			begin
+				if (Inst_Valid)//说明是上升沿
+				begin
+				//Instruction_Register = Instruction_Register;
+					Inst_Ack <= 1'b0;						
+				end	
+			end			
+			default:
+				;
+			endcase
+		end
+	end
+
+	always @(posedge clk) //always3_for_MemWrite
+	begin
+		if (rst) 
+		begin
+			MemWrite <= 1'b0;			
+			//Address <= Address_before_always;
+		end
+		else 
+		begin
+			case(cpu_status_now)			
+			`EX:
+			begin				
+				if (cpu_status_next == `ST)		
+					MemWrite <= MemWrite_wire;			
+			end
+			`ST:
+			begin
+				if (Mem_Req_Ack)//说明是上升沿
+				begin
+					MemWrite <= 1'b0;						
+				end	
+			end			
+			default:
+				;
+			endcase
+		end
+	end
+
+	always @(posedge clk) //always3_for_MemRead
+	begin
+		if (rst) 
+		begin
+			MemRead <= 1'b0;			
+			//Address <= Address_before_always;
+		end
+		else 
+		begin
+			case(cpu_status_now)			
+			`EX:
+			begin				
+				if (cpu_status_next == `LD)
+					MemRead <= MemRead_wire;
+			end			
+			`LD:
+			begin
+				if (Mem_Req_Ack)//说明是上升沿
+				begin					
+					MemRead <= 1'b0;	
+				end	
+			end			
+			default:
+				;
+			endcase
+		end
+	end
+
+	always @(posedge clk) //always3_for_Read_data_Ack
+	begin
+		if (rst) 
+		begin			
+			Read_data_Ack <= 1'b0;			
+			//Address <= Address_before_always;
+		end
+		else 
+		begin
+			case(cpu_status_now)		
+			`LD:
+			begin
+				if (Mem_Req_Ack)//说明是上升沿
+				begin
+					Read_data_Ack <= 1'b1;						
+				end	
+			end
+			`RDW:
+			begin
+				if (Read_data_Valid)//说明是上升沿
+				begin
+					Read_data_Ack <= 1'b0;					
+				end
+			end
+			default:
+				;
+			endcase
+		end
+	end
+
+	always @(posedge clk) //always3_for_IR
+	begin
+		if (rst) 
+		begin			
+			Instruction_Register <= 0;			
+			//Address <= Address_before_always;
+		end
+		else 
+		begin
+			if (cpu_status_now == `IW)			
+				if (Inst_Valid)				
+					Instruction_Register <= Instruction;			
+		end
+	end
+
+	always @(posedge clk) //always3_for_Read_data_reg
+	begin
+		if (rst) 
+		begin			
+			Read_data_reg <= 0;			
+			//Address <= Address_before_always;
+		end
+		else 
+		begin
+			if (cpu_status_now == `RDW)			
+				if (Read_data_Valid)				
+					Read_data_reg <= Read_data;			
+		end
+	end
+
+	always @(posedge clk) //always3_for_address
+	begin
+		if (rst) 
+		begin			
+			Address <= Address_before_always;			
+		end
+		else 
+		begin
+			if (cpu_status_now == `EX)			
+				Address <= Address_before_always;		
+		end
+	end
+
+	always @(posedge clk) //for jalr
+	begin
+		if (rst) 
+		begin
+			RF_wdata_just_for_jalr <= RF_wdata;
+		end
+		else
+		begin 
+			if (cpu_status_next == `EX)//如果下一个状态是EX，那么马上更新专属RF_Wdata，等到EX的时候就晚了
+			begin
+				RF_wdata_just_for_jalr <= RF_wdata;
+			end
+		end
+	end
+
 
 
 
@@ -500,25 +863,17 @@ module ALU_controller(
 					(ALUop_raw == `xor_aluop_raw)?`XOR:(
 					(ALUop_raw == `R_type_aluop_raw)?(
 						
-					(funct == `sll_funct  || 
-					 funct == `addu_funct || 
-					 funct == `jr_funct   || 
-					
-					 funct == `movn_funct ||
-				 	 funct == `srl_funct  ||
-				 	 funct == `sllv_funct ||
-					 funct == `sra_funct  ||
-					 funct == `srav_funct ||
-					 funct == `srlv_funct ||
-					 funct == `movz_funct)?`ADD:(
+					((funct3 == `add_sub_funct3 && funct7 == `add_funct7)|| 
+					 funct3 == `sll_funct3  ||
+				 	 funct3 == `srl_sra_funct3
+					 )?`ADD:(
 					//(funct[3:0] == 4'b0010)?`SUB:(
-					(funct == `subu_funct)?`SUB:(
-					(funct == `and_funct)?`AND:(
-					(funct == `or_funct)?`OR :(
-					(funct == `nor_funct)?`NOR:(
-					(funct == `xor_funct)?`XOR:(
-					(funct == `sltu_funct)?`SLTU:(
-					(funct == `slt_funct)?`SLT:4'b1111)))))))):(
+					(funct3 == `add_sub_funct3 && funct7 == `sub_funct7)?`SUB:(
+					(funct3 == `and_funct3)?`AND:(
+					(funct3 == `or_funct3)?`OR :(					
+					(funct3 == `xor_funct3)?`XOR:(
+					(funct3 == `sltu_funct3)?`SLTU:(
+					(funct3 == `slt_funct3)?`SLT:4'b1111))))))):(
 
 					(ALUop_raw == `B_type_aluop_raw)?(
 
@@ -539,7 +894,7 @@ module shifter(
 	input [31:0] alu_a_raw,
 	input [31:0] alu_b_raw,
 	input [6:0] typecode,
-	input [6:0] identifier,
+	input [6:0] funct7,
 	output [31:0] alu_a,
 	output [31:0] alu_b
 );
@@ -548,53 +903,63 @@ module shifter(
 	wire [31:0] sll_answer;
 	wire [31:0] srl_answer;
 	wire [31:0] sra_answer;
-	wire [31:0] sllv_answer;
-	wire [31:0] srlv_answer;
-	wire [31:0] srav_answer;
 
 	wire [31:0] slli_answer;
 	wire [31:0] srli_answer;
 	wire [31:0] srai_answer;
 					
 
-	assign sll_answer  = alu_b_raw << shamt;
-	assign srl_answer  = alu_b_raw >> shamt;
+	assign sll_answer  = alu_a_raw << shamt;
+	assign srl_answer  = alu_a_raw >> shamt;
 	//assign sra_answer  = {{shamt{alu_b_raw[31]}}, alu_b_raw[31:32-shamt]};
-	assign sra_answer = (alu_b_raw[31])?(~((~alu_b_raw) >> shamt)):srl_answer;//取反逻辑右移之后再取反就行了
-	assign sllv_answer = alu_b_raw << alu_a_raw[4:0];
-	assign srlv_answer = alu_b_raw >> alu_a_raw[4:0];
+	assign sra_answer = (alu_a_raw[31])?(~((~alu_a_raw) >> shamt)):srl_answer;//取反逻辑右移之后再取反就行了
+	
 	//assign srav_answer = {{alu_a_raw{alu_b_raw[31]}}, alu_b_raw[31:32 - alu_a_raw]};
-	assign srav_answer = (alu_b_raw[31])?(~((~alu_b_raw) >> alu_a_raw[4:0])):srlv_answer;
-
+	
 	assign slli_answer = alu_a_raw << shamt;
 	assign srli_answer = alu_a_raw >> shamt;
 	assign srai_answer = (alu_a_raw[31])?(~((~alu_a_raw) >> shamt)):srli_answer;//取反逻辑右移之后再取反就行了
 
-	assign alu_a = (typecode == `R_type_in)?(
-					   (funct == `sll_funct ||
-						funct == `srl_funct ||
-						funct == `sra_funct ||
-						funct == `sllv_funct ||
-						funct == `srlv_funct ||
-						funct == `srav_funct)?32'b0:alu_a_raw):(//如果是Rtype的这6种功能的话，alu的a端口不输入加数
+	
+
+
+
+
+
+
+
+	assign alu_a = (typecode == `R_type_opcode)?(
+				    (funct3 == `sll_funct3)?  sll_answer:(
+					(funct3 == `srl_sra_funct3 && funct7 == `srl_funct7)?  srl_answer:(
+					(funct3 == `srl_sra_funct3 && funct7 == `sra_funct7)?  sra_answer:alu_a_raw))):(//如果是Rtype的这6种功能的话，alu的a端口不输入加数
 				   (typecode == `I_type_opcode)?(
 					   (funct3 == `slli_funct3)? slli_answer:(
-					   (funct3 == `srli_srai_funct3 && identifier == `srli_imm)? srli_answer:(
-					   (funct3 == `srli_srai_funct3 && identifier == `srai_imm)? srai_answer:
+					   (funct3 == `srli_srai_funct3 && funct7 == `srli_imm)? srli_answer:(
+					   (funct3 == `srli_srai_funct3 && funct7 == `srai_imm)? srai_answer:
 					   alu_a_raw))):alu_a_raw);
 
 
 
-	assign alu_b = (typecode == `R_type_in)?(
-				    (funct == `sll_funct)?  sll_answer:(
-					(funct == `srl_funct)?  srl_answer:(
-					(funct == `sra_funct)?  sra_answer:(
-					(funct == `sllv_funct)?sllv_answer:(
-					(funct == `srlv_funct)?srlv_answer:(
-					(funct == `srav_funct)?srav_answer:alu_b_raw)))))):((
-				   (typecode == `I_type_opcode)?
-						(funct3 == `slli_funct3 ||
-						 funct3 == `srli_srai_funct3)?32'b0:alu_b_raw):alu_b_raw); 
+	assign alu_b = (typecode == `R_type_opcode)?
+					(
+					   (funct3 == `sll_funct3 || funct3 == `srl_sra_funct3)?
+					   32'b0
+					   :
+					   alu_b_raw
+					)
+					:
+					(
+						
+				   		(typecode == `I_type_opcode)?
+						(	
+							(funct3 == `slli_funct3 || funct3 == `srli_srai_funct3)?
+								32'b0
+							:
+								alu_b_raw
+						)
+						:
+						alu_b_raw
+					); 
 
 	
 
