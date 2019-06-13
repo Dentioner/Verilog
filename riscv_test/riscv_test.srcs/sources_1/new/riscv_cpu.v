@@ -168,6 +168,8 @@ module riscv_cpu(
 	wire [11:0] S_type_imm;
 	wire [11:0] I_type_imm;
 
+	wire [6:0] identifier;//由于某些指令共用一个funct3导致需要额外区分一下
+
 	wire [31:0] symbol_extension;
 	wire [31:0] alu1_a_raw;
 	wire [31:0] alu1_b_raw;
@@ -237,7 +239,7 @@ module riscv_cpu(
 	assign S_type_imm 	= {Instruction_Register[31:25], Instruction_Register[11:7]};
 	assign I_type_imm 	= Instruction_Register[31:20];
 
-
+	assign identifier 	= Instruction_Register[31:25];
 	//下面这堆assign是书上样例的“控制”模块
 	assign control_data =   (opcode == `R_type_in)?`R_type_out:(
 							(opcode == `L_type_opcode)?`L_type_out:(
@@ -459,7 +461,7 @@ module riscv_cpu(
 
 //*****************************sub_modules************************************************************************
 	ALU_controller act1(.funct3(funct3), .ALUop_raw(ALUop_raw), .ALUop(ALUop));//书上样例的“ALU控制”模块
-	shifter s1(.funct3(funct3), .shamt(shamt), .alu_a_raw(alu1_a_raw), .alu_b_raw(alu1_b_raw), .typecode(opcode), .alu_a(alu1_a), .alu_b(alu1_b));//最下面新增的移位模块
+	shifter s1(.funct3(funct3), .shamt(shamt), .alu_a_raw(alu1_a_raw), .alu_b_raw(alu1_b_raw), .typecode(opcode), .alu_a(alu1_a), .alu_b(alu1_b), .identifier(identifier));//最下面新增的移位模块
 
 
 	alu alu1(.A(alu1_a), .B(alu1_b), .ALUop(ALUop), .Zero(Zero_raw),  .Result(alu1_result), .Overflow(alu1_overflow), .CarryOut(alu1_carryout));//overflow 和 carryout的信号暂时没引出
@@ -537,6 +539,7 @@ module shifter(
 	input [31:0] alu_a_raw,
 	input [31:0] alu_b_raw,
 	input [6:0] typecode,
+	input [6:0] identifier,
 	output [31:0] alu_a,
 	output [31:0] alu_b
 );
@@ -549,14 +552,9 @@ module shifter(
 	wire [31:0] srlv_answer;
 	wire [31:0] srav_answer;
 
-	assign alu_a = (typecode == `R_type_in)?(
-				   (funct == `sll_funct ||
-					funct == `srl_funct ||
-					funct == `sra_funct ||
-					funct == `sllv_funct ||
-					funct == `srlv_funct ||
-					funct == `srav_funct)?32'b0:alu_a_raw):alu_a_raw;//如果是Rtype的这6种功能的话，alu的a端口不输入加数
-
+	wire [31:0] slli_answer;
+	wire [31:0] srli_answer;
+	wire [31:0] srai_answer;
 					
 
 	assign sll_answer  = alu_b_raw << shamt;
@@ -568,7 +566,22 @@ module shifter(
 	//assign srav_answer = {{alu_a_raw{alu_b_raw[31]}}, alu_b_raw[31:32 - alu_a_raw]};
 	assign srav_answer = (alu_b_raw[31])?(~((~alu_b_raw) >> alu_a_raw[4:0])):srlv_answer;
 
+	assign slli_answer = alu_a_raw << shamt;
+	assign srli_answer = alu_a_raw >> shamt;
+	assign srai_answer = (alu_a_raw[31])?(~((~alu_a_raw) >> shamt)):srli_answer;//取反逻辑右移之后再取反就行了
 
+	assign alu_a = (typecode == `R_type_in)?(
+					   (funct == `sll_funct ||
+						funct == `srl_funct ||
+						funct == `sra_funct ||
+						funct == `sllv_funct ||
+						funct == `srlv_funct ||
+						funct == `srav_funct)?32'b0:alu_a_raw):(//如果是Rtype的这6种功能的话，alu的a端口不输入加数
+				   (typecode == `I_type_opcode)?(
+					   (funct3 == `slli_funct3)? slli_answer:(
+					   (funct3 == `srli_srai_funct3 && identifier == `srli_imm)? srli_answer:(
+					   (funct3 == `srli_srai_funct3 && identifier == `srai_imm)? srai_answer:
+					   alu_a_raw))):alu_a_raw);
 
 
 
@@ -578,7 +591,10 @@ module shifter(
 					(funct == `sra_funct)?  sra_answer:(
 					(funct == `sllv_funct)?sllv_answer:(
 					(funct == `srlv_funct)?srlv_answer:(
-					(funct == `srav_funct)?srav_answer:alu_b_raw)))))):alu_b_raw; 
+					(funct == `srav_funct)?srav_answer:alu_b_raw)))))):((
+				   (typecode == `I_type_opcode)?
+						(funct3 == `slli_funct3 ||
+						 funct3 == `srli_srai_funct3)?32'b0:alu_b_raw):alu_b_raw); 
 
 	
 
