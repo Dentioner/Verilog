@@ -57,6 +57,15 @@
 `define srli_imm		7'b0000000
 `define srai_imm		7'b0100000
 
+`define addiu_out   	12'b111010000010
+`define slti_out		12'b111010000111
+`define sltiu_out		12'b111010000011
+`define xori_out		12'b111010000101
+`define ori_out			12'b111010000001
+`define andi_out		12'b111010000000
+
+`define slli_out		12'b111010000010
+
 //****************************************************************L_type************************************************************************************************
 `define L_type_opcode	7'b0000011
 `define lb_funct3		3'b000
@@ -192,8 +201,8 @@ module riscv_cpu(
 
 
 
-//下面这两个线是给instruction最低的11位命名
-	wire [5:0] funct;
+
+	//wire [5:0] funct;
 	wire [4:0] shamt;
  
 	wire [31:0] jump_address;//jmp类指令使用
@@ -218,6 +227,7 @@ module riscv_cpu(
 	assign rs1_address	= Instruction_Register[19:15];
 	assign rs2_address 	= Instruction_Register[24:20];
 	assign funct7 		= Instruction_Register[31:25];
+	assign shamt 		= Instruction_Register[24:20];
 
 	assign U_type_imm 	= Instruction_Register[31:12];
 	assign jal_imm 		= {Instruction_Register[31], Instruction_Register[19:12], Instruction_Register[20], Instruction_Register[30:21]};
@@ -237,17 +247,25 @@ module riscv_cpu(
 
 							(opcode == `B_type_opcode)   ?`B_type_out:(
 
+
 							(opcode == `addiu_in) ?`addiu_out :(							
 							(opcode == `lui_opcode)   ?`lui_out   :(							
-							(opcode == `andi_in)  ?`andi_out  :(
-							(opcode == `ori_in)   ?`ori_out   :(					
-							(opcode == `xori_in)  ?`xori_out  :(
-							(opcode == `slti_in)  ?`slti_out  :(
-							(opcode == `sltiu_in) ?`sltiu_out :(
+							
+												
+							
+							
+							
 
 							(opcode == `jal_opcode)   ?`jal_out   :(
+							(opcode == `I_type_opcode && funct3 == `addi_funct3)?`addiu_out:(
+							(opcode == `I_type_opcode && funct3 == `slti_funct3)?`slti_out:(
+							(opcode == `I_type_opcode && funct3 == `sltiu_funct3) ?`sltiu_out :(
+							(opcode == `I_type_opcode && funct3 == `xori_funct3) ?`xori_out :(
+							(opcode == `I_type_opcode && funct3 == `ori_funct3) ?`ori_out :(
+							(opcode == `I_type_opcode && funct3 == `andi_funct3) ?`andi_out :(
+							(opcode == `I_type_opcode && funct3 == `slli_funct3)?`slli_out :(
 
-							(opcode == `jalr_opcode)	   ?`jalr_out	  :12'b10000000000))))))))))));
+							(opcode == `jalr_opcode)	   ?`jalr_out	  :12'b10000000000))))))))))))));
 
 
 
@@ -299,11 +317,14 @@ module riscv_cpu(
 							  (opcode == `jalr_opcode)?{{20{jalr_imm[11]}}, jalr_imm}:(
 							  (opcode == `L_type_opcode)?{{20{L_type_imm[11]}}, L_type_imm}:(
 							  (opcode == `S_type_opcode)?{{20{S_type_imm[11]}}, S_type_imm}:(
-							  (opcode == `sltiu_in || 
-							  	opcode == `andi_in ||
-							  	opcode == `xori_in || 
-							  	opcode == `ori_in)?{16'b0, Instruction_Register[15:0]}:
-							{{16{Instruction_Register[15]}}, Instruction_Register[15:0]}))));//如果是lui指令则做左移，否则符号拓展
+							  (opcode == `I_type_opcode && 
+							  		(funct3 == `addi_funct3 || 
+							  		 funct3 == `slti_funct3 ||
+							  		 funct3 == `xori_funct3 ||
+							  		 funct3 == `ori_funct3  ||
+							  		 funct3 == `andi_funct3))?{{20{I_type_imm[11]}}, I_type_imm}:(
+							  (opcode == `I_type_opcode && funct3 == `sltiu_funct3)?{20'b0, I_type_imm}:
+							{{16{Instruction_Register[15]}}, Instruction_Register[15:0]})))));//如果是lui指令则做左移，否则符号拓展
 
 //下面这堆assign是给右上角的数据选择器用的
 	assign Branch_after_AND = Branch & Zero_input_to_alu2;
@@ -433,12 +454,12 @@ module riscv_cpu(
 	*/
 	assign PC = PC_reg;
 	assign RF_wen = RF_wen_reg;
-	assign Instruction_for_submodule = Instruction_Register;
+	
 	assign RF_wdata_final = (opcode == `jalr_opcode)?RF_wdata_just_for_jalr:RF_wdata;//考虑jalr这个奇葩指令之后的最终信号
 
 //*****************************sub_modules************************************************************************
-	ALU_controller act1(.funct(funct), .ALUop_raw(ALUop_raw), .ALUop(ALUop));//书上样例的“ALU控制”模块
-	shifter s1(.funct(funct), .shamt(shamt), .alu_a_raw(alu1_a_raw), .alu_b_raw(alu1_b_raw), .typecode(Instruction_for_submodule[31:26]), .alu_a(alu1_a), .alu_b(alu1_b));//最下面新增的移位模块
+	ALU_controller act1(.funct3(funct3), .ALUop_raw(ALUop_raw), .ALUop(ALUop));//书上样例的“ALU控制”模块
+	shifter s1(.funct3(funct3), .shamt(shamt), .alu_a_raw(alu1_a_raw), .alu_b_raw(alu1_b_raw), .typecode(opcode), .alu_a(alu1_a), .alu_b(alu1_b));//最下面新增的移位模块
 
 
 	alu alu1(.A(alu1_a), .B(alu1_b), .ALUop(ALUop), .Zero(Zero_raw),  .Result(alu1_result), .Overflow(alu1_overflow), .CarryOut(alu1_carryout));//overflow 和 carryout的信号暂时没引出
@@ -457,7 +478,7 @@ endmodule
 
 
 module ALU_controller(
-	input [5:0] funct,
+	input [5:0] funct3,
 	input [3:0]	ALUop_raw,
 	output [3:0] ALUop
 );
@@ -515,7 +536,7 @@ module shifter(
 	input [4:0] shamt,
 	input [31:0] alu_a_raw,
 	input [31:0] alu_b_raw,
-	input [5:0] typecode,
+	input [6:0] typecode,
 	output [31:0] alu_a,
 	output [31:0] alu_b
 );
