@@ -550,7 +550,7 @@ module riscv_cpu(
 	begin
 		if (rst) 
 		begin
-			RF_wen_reg <= 0	// reset			
+			RF_wen_reg <= 0;	// reset			
 		end
 		else  
 		begin
