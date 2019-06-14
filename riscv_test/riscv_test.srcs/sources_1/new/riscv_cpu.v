@@ -655,7 +655,7 @@ module riscv_cpu(
 		else 
 		begin
 			case(cpu_status_next)			
-			`IF:
+			`RDW:
 				MemRead <= 1'b0;
 			
 			`LD:
@@ -726,10 +726,16 @@ module riscv_cpu(
 		begin
 			//if (cpu_status_now == `EX)			
 				//Address <= Address_before_always;		
+			
+			
 			case(cpu_status_next)
 			`ST:
 				Address <= Address_before_always;
 			`LD:
+				Address <= Address_before_always;
+			`IF:
+				Address <= Address_before_always;
+			`WB:
 				Address <= Address_before_always;
 			default:
 				;
