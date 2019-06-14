@@ -724,8 +724,16 @@ module riscv_cpu(
 		end
 		else 
 		begin
-			if (cpu_status_now == `EX)			
-				Address <= Address_before_always;		
+			//if (cpu_status_now == `EX)			
+				//Address <= Address_before_always;		
+			case(cpu_status_next)
+			`ST:
+				Address <= Address_before_always;
+			`LD:
+				Address <= Address_before_always;
+			default:
+				;
+			endcase
 		end
 	end
 
