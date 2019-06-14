@@ -589,37 +589,13 @@ module riscv_cpu(
 		end
 		else 
 		begin
-			case(cpu_status_now)
+			case(cpu_status_next)
 			`IF:
-			begin
-				if (Inst_Req_Ack)
-				begin
-					Inst_Req_Valid <= 1'b0;					
-				end
-				else
-				begin
-					Inst_Req_Valid <= 1'b1;					
-				end	
-			end
-			`EX:
-			begin
-				if (cpu_status_next == `IF)
-				begin
-					Inst_Req_Valid <= 1'b1;
-				end
-			end
-			`ST:
-			begin
-				if (Mem_Req_Ack)//说明是上升沿
-				begin
-					Inst_Req_Valid <= 1'b1;				
-				end	
-			end
-			
-			`WB:
 				Inst_Req_Valid <= 1'b1;
+			`IW:
+				Inst_Req_Valid <= 1'b0;			
 			default:
-				;
+				Inst_Req_Valid <= 1'b0;
 			endcase
 		end
 	end
@@ -633,26 +609,14 @@ module riscv_cpu(
 		end
 		else 
 		begin
-			case(cpu_status_now)
+			case(cpu_status_next)			
 			`IF:
-			begin
-				if (Inst_Req_Ack)
-				begin					
-					Inst_Ack <= 1'b1;
-				end
-				else
-				begin					
-					Inst_Ack <= 1'b0;//在这里加这个是为了避免和always3里面的赋值出现竞争
-				end	
-			end
+				Inst_Ack <= 1'b0;
 			`IW:
-			begin
-				if (Inst_Valid)//说明是上升沿
-				begin
-				//Instruction_Register = Instruction_Register;
-					Inst_Ack <= 1'b0;						
-				end	
-			end			
+				Inst_Ack <= 1'b1;
+			`ID:
+				Inst_Ack <= 1'b0;
+							
 			default:
 				;
 			endcase
@@ -668,19 +632,13 @@ module riscv_cpu(
 		end
 		else 
 		begin
-			case(cpu_status_now)			
-			`EX:
-			begin				
-				if (cpu_status_next == `ST)		
-					MemWrite <= MemWrite_wire;			
-			end
+			case(cpu_status_next)			
+			`IF:
+				MemWrite <= 1'b0;
+			
 			`ST:
-			begin
-				if (Mem_Req_Ack)//说明是上升沿
-				begin
-					MemWrite <= 1'b0;						
-				end	
-			end			
+				MemWrite <= MemWrite_wire;
+						
 			default:
 				;
 			endcase
@@ -696,19 +654,13 @@ module riscv_cpu(
 		end
 		else 
 		begin
-			case(cpu_status_now)			
-			`EX:
-			begin				
-				if (cpu_status_next == `LD)
-					MemRead <= MemRead_wire;
-			end			
+			case(cpu_status_next)			
+			`IF:
+				MemRead <= 1'b0;
+			
 			`LD:
-			begin
-				if (Mem_Req_Ack)//说明是上升沿
-				begin					
-					MemRead <= 1'b0;	
-				end	
-			end			
+				MemRead <= MemRead_wire;
+					
 			default:
 				;
 			endcase
@@ -724,21 +676,12 @@ module riscv_cpu(
 		end
 		else 
 		begin
-			case(cpu_status_now)		
-			`LD:
-			begin
-				if (Mem_Req_Ack)//说明是上升沿
-				begin
-					Read_data_Ack <= 1'b1;						
-				end	
-			end
+			case(cpu_status_next)		
+			
 			`RDW:
-			begin
-				if (Read_data_Valid)//说明是上升沿
-				begin
-					Read_data_Ack <= 1'b0;					
-				end
-			end
+				Read_data_Ack <= 1'b1;
+			`WB:
+				Read_data_Ack <= 1'b0;	
 			default:
 				;
 			endcase
@@ -754,9 +697,8 @@ module riscv_cpu(
 		end
 		else 
 		begin
-			if (cpu_status_now == `IW)			
-				if (Inst_Valid)				
-					Instruction_Register <= Instruction;			
+			if (cpu_status_next == `ID)			
+				Instruction_Register <= Instruction;			
 		end
 	end
 
@@ -769,9 +711,8 @@ module riscv_cpu(
 		end
 		else 
 		begin
-			if (cpu_status_now == `RDW)			
-				if (Read_data_Valid)				
-					Read_data_reg <= Read_data;			
+			if (cpu_status_next == `WB)			
+				Read_data_reg <= Read_data;			
 		end
 	end
 
