@@ -545,34 +545,25 @@ module riscv_cpu(
 	end
 
 
-	always @* //always2_for_RFwen
+
+	always @(posedge clk) 
 	begin
-		RF_wen_reg = 1'b0;//default
-			case(cpu_status_now)
-			`IF:	
-				RF_wen_reg = 1'b0;
-			`IW:
-				RF_wen_reg = 1'b0;//记得修改别处的RF_wen信号
-			`ID:
-				RF_wen_reg = 1'b0;
-			`EX:
-				RF_wen_reg = 1'b0;		
-			`ST:
-				RF_wen_reg = 1'b0;
-			`LD:				
-				RF_wen_reg = 1'b0;
-			`RDW:
-				RF_wen_reg = 1'b0;//记得修改别处的RF_wen信号
-				//Address = Address_before_always;
+		if (rst) 
+		begin
+			RF_wen_reg <= 0	// reset			
+		end
+		else  
+		begin
+			case(cpu_status_next)
 			`WB:
 				begin
-					RF_wen_reg = RF_wen_before_always;			
+					RF_wen_reg <= RF_wen_before_always;			
 				end
 			default:				
-				RF_wen_reg = 1'b0;			
-			endcase	
+				RF_wen_reg <= 1'b0;	
+			endcase
+		end
 	end
-
 
 
 
