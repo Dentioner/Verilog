@@ -339,14 +339,8 @@ module riscv_cpu(
 							  (opcode == `jalr_opcode)?{{20{jalr_imm[11]}}, jalr_imm}:(
 							  (opcode == `L_type_opcode)?{{20{L_type_imm[11]}}, L_type_imm}:(
 							  (opcode == `S_type_opcode)?{{20{S_type_imm[11]}}, S_type_imm}:(
-							  (opcode == `I_type_opcode && 
-							  		(funct3 == `addi_funct3 || 
-							  		 funct3 == `slti_funct3 ||
-							  		 funct3 == `xori_funct3 ||
-							  		 funct3 == `ori_funct3  ||
-							  		 funct3 == `andi_funct3))?{{20{I_type_imm[11]}}, I_type_imm}:(
-							  (opcode == `I_type_opcode && funct3 == `sltiu_funct3)?{20'b0, I_type_imm}:
-							{{20{Instruction_Register[31]}}, Instruction_Register[31:20]})))));//如果是lui指令则做左移，否则符号拓展
+							  (opcode == `I_type_opcode)?{{20{I_type_imm[11]}}, I_type_imm}:
+							{{20{Instruction_Register[31]}}, Instruction_Register[31:20]}))));//如果是lui指令则做左移，否则符号拓展
 
 //下面这堆assign是给右上角的数据选择器用的
 	assign Branch_after_AND = Branch & Zero_input_to_alu2;
