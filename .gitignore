@@ -3961,6 +3961,12 @@ state_machine/test_behav.wcfg
 *.rpt
 *.rpx
 *.dcp
-*.xdc
 LED2/LED2.runs/synth_1/__synthesis_is_complete__
 *.vds
+*.vhd
+*.xci
+*.vho
+*.veo
+ram_20190905/ram_20190905.runs/block_ram_synth_1/__synthesis_is_complete__
+*.udo
+*.do
