@@ -46,12 +46,12 @@ reg [3:0] prev_data;
 //new value
 always @(posedge clk)
 begin
-//    show_data   <= ~switch;//这是bug?
+    show_data   <= ~switch;
 end
 
 always @(posedge clk)
 begin
-    show_data_r = show_data;//bug, 改成非阻塞赋值?或者把什么东西改成assign
+    show_data_r <= show_data;//bug, 改成非阻塞赋值?或者把什么东西改成assign
 end
 //previous value
 always @(posedge clk)
@@ -75,7 +75,7 @@ show_num u_show_num(
         .resetn     (resetn   ),
         
         .show_data  (show_data),
-        .num_csn    (num_scn  ),//bug，打错字了
+        .num_csn    (num_csn  ),//bug，打错字了
         .num_a_g    (num_a_g  )
 );
 
@@ -88,7 +88,7 @@ module show_num (
 
     input      [3 :0] show_data,
     output     [7 :0] num_csn,      
-    output reg [6 :0] num_a_g      
+	output reg [6 :0] num_a_g      
 );
 //digital number display
 assign num_csn = 8'b0111_1111; //？这个是干啥的?如果这个是对的话为什么放进子模块？
@@ -109,14 +109,15 @@ end
 
 //keep unchange if show_data>=10
 wire [6:0] keep_a_g;
-assign     keep_a_g = num_a_g + nxt_a_g;
+assign     keep_a_g = num_a_g;
 
 assign nxt_a_g = show_data==4'd0 ? 7'b1111110 :   //0
                  show_data==4'd1 ? 7'b0110000 :   //1
                  show_data==4'd2 ? 7'b1101101 :   //2
                  show_data==4'd3 ? 7'b1111001 :   //3
-                 show_data==4'd4 ? 7'b0110011 :   //4
+                 show_data==4'd4 ? 7'b0110011 :   //4		
                  show_data==4'd5 ? 7'b1011011 :   //5  //bug？6呢
+                 show_data==4'd6 ? 7'b1011111 :   //6
                  show_data==4'd7 ? 7'b1110000 :   //7
                  show_data==4'd8 ? 7'b1111111 :   //8
                  show_data==4'd9 ? 7'b1111011 :   //9
