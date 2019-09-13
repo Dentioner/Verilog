@@ -21,17 +21,46 @@
 
 
 module mul(
-
+	input[31:0] x,
+	input[31:0] y,
+	output[63:0] result
     );
+//32位乘法，共16个booth编码器，64个 16个数相加华莱士树单元，最后是一个64位加法器
+
+	wire[15:0] c_16bit;
+	wire[31:0] p [15:0];//共使用16个booth编码器，每个booth编码器都要输出32位的p
 
 
-	
+	booth_encoder b0 (.x(x), .y({y[ 1], y[ 0], 1'b0 }), .p(p[ 0]), .c(c_16bit[ 0]));
+	booth_encoder b1 (.x(x), .y({y[ 3], y[ 2], y[ 1]}), .p(p[ 1]), .c(c_16bit[ 1]));
+	booth_encoder b2 (.x(x), .y({y[ 5], y[ 4], y[ 3]}), .p(p[ 2]), .c(c_16bit[ 2]));
+	booth_encoder b3 (.x(x), .y({y[ 7], y[ 6], y[ 5]}), .p(p[ 3]), .c(c_16bit[ 3]));
+	booth_encoder b4 (.x(x), .y({y[ 9], y[ 8], y[ 7]}), .p(p[ 4]), .c(c_16bit[ 4]));
+	booth_encoder b5 (.x(x), .y({y[11], y[10], y[ 9]}), .p(p[ 5]), .c(c_16bit[ 5]));
+	booth_encoder b6 (.x(x), .y({y[13], y[12], y[11]}), .p(p[ 6]), .c(c_16bit[ 6]));
+	booth_encoder b7 (.x(x), .y({y[15], y[14], y[13]}), .p(p[ 7]), .c(c_16bit[ 7]));
+	booth_encoder b8 (.x(x), .y({y[17], y[16], y[15]}), .p(p[ 8]), .c(c_16bit[ 8]));
+	booth_encoder b9 (.x(x), .y({y[19], y[18], y[17]}), .p(p[ 9]), .c(c_16bit[ 9]));
+	booth_encoder b10(.x(x), .y({y[21], y[20], y[19]}), .p(p[10]), .c(c_16bit[10]));
+	booth_encoder b11(.x(x), .y({y[23], y[22], y[21]}), .p(p[11]), .c(c_16bit[11]));
+	booth_encoder b12(.x(x), .y({y[25], y[24], y[23]}), .p(p[12]), .c(c_16bit[12]));
+	booth_encoder b13(.x(x), .y({y[27], y[26], y[25]}), .p(p[13]), .c(c_16bit[13]));
+	booth_encoder b14(.x(x), .y({y[29], y[28], y[27]}), .p(p[14]), .c(c_16bit[14]));
+	booth_encoder b15(.x(x), .y({y[31], y[30], y[29]}), .p(p[15]), .c(c_16bit[15]));
+
+
+
 
 endmodule
 
 
+module switch(
+	input [31:0] p[15:0],
+	output 
+	);//switch负责收集16个booth核心生成的16个32位数，转化为32组16个1位数相加的格式，给华莱士树
 
 
+endmodule
 
 
 
