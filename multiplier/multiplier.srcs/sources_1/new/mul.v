@@ -38,15 +38,32 @@ module mul(
 
 
 	booth_encoder b0 (.x(x_symbol_extension), .y({y[ 1], y[ 0], 1'b0 }), .p(p[ 0]), .c(c_16bit[ 0]));
-	generate
+	booth_encoder b1 (.x(x_symbol_extension << 2 ), .y({y[ 3], y[ 2], y[ 1]}), .p(p[ 1]), .c(c_16bit[ 1]));
+	booth_encoder b2 (.x(x_symbol_extension << 4 ), .y({y[ 5], y[ 4], y[ 3]}), .p(p[ 2]), .c(c_16bit[ 2]));
+	booth_encoder b3 (.x(x_symbol_extension << 6 ), .y({y[ 7], y[ 6], y[ 5]}), .p(p[ 3]), .c(c_16bit[ 3]));
+	booth_encoder b4 (.x(x_symbol_extension << 8 ), .y({y[ 9], y[ 8], y[ 7]}), .p(p[ 4]), .c(c_16bit[ 4]));
+	booth_encoder b5 (.x(x_symbol_extension << 10), .y({y[11], y[10], y[ 9]}), .p(p[ 5]), .c(c_16bit[ 5]));
+	booth_encoder b6 (.x(x_symbol_extension << 12), .y({y[13], y[12], y[11]}), .p(p[ 6]), .c(c_16bit[ 6]));
+	booth_encoder b7 (.x(x_symbol_extension << 14), .y({y[15], y[14], y[13]}), .p(p[ 7]), .c(c_16bit[ 7]));
+	booth_encoder b8 (.x(x_symbol_extension << 16), .y({y[17], y[16], y[15]}), .p(p[ 8]), .c(c_16bit[ 8]));
+	booth_encoder b9 (.x(x_symbol_extension << 18), .y({y[19], y[18], y[17]}), .p(p[ 9]), .c(c_16bit[ 9]));
+	booth_encoder b10(.x(x_symbol_extension << 20), .y({y[21], y[20], y[19]}), .p(p[10]), .c(c_16bit[10]));
+	booth_encoder b11(.x(x_symbol_extension << 22), .y({y[23], y[22], y[21]}), .p(p[11]), .c(c_16bit[11]));
+	booth_encoder b12(.x(x_symbol_extension << 24), .y({y[25], y[24], y[23]}), .p(p[12]), .c(c_16bit[12]));
+	booth_encoder b13(.x(x_symbol_extension << 26), .y({y[27], y[26], y[25]}), .p(p[13]), .c(c_16bit[13]));
+	booth_encoder b14(.x(x_symbol_extension << 28), .y({y[29], y[28], y[27]}), .p(p[14]), .c(c_16bit[14]));
+	booth_encoder b15(.x(x_symbol_extension << 30), .y({y[31], y[30], y[29]}), .p(p[15]), .c(c_16bit[15]));
+	
+
+
+/*	generate
 		genvar i;
 		for(i = 1; i < 16; i = i + 1)
 		begin:encoder
 			booth_encoder e(.x(x_symbol_extension), .y({y[2*i+1], y[2*i], y[2*i-1]}), .p(p[i]), .c(c_16bit[i]));
 		end
 	endgenerate
-
-
+*/
 /*
 	booth_encoder b1 (.x(x), .y({y[ 3], y[ 2], y[ 1]}), .p(p[ 1]), .c(c_16bit[ 1]));
 	booth_encoder b2 (.x(x), .y({y[ 5], y[ 4], y[ 3]}), .p(p[ 2]), .c(c_16bit[ 2]));
@@ -81,7 +98,7 @@ module mul(
 		end
 	endgenerate
 
-	add_64bit a1(.a(S), .b(C), .cin(1'b0), .s(result));
+	add_64bit a1(.a(S), .b({C[62:0], 1'b0}), .cin(1'b0), .s(result));
 
 
 endmodule
