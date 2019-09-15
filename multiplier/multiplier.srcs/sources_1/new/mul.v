@@ -111,7 +111,21 @@ module add_64bit(
 	output[63:0] s,
 	output cout
 	);
-	assign s = a+b;
+	//assign s = a+b;
+
+	wire [63:0] tmp;
+	full_adder a0(.a(a[0]), .b(b[0]), .cin(cin), .s(s[0]), .cout(tmp[0]));
+
+	generate
+		genvar i;
+		for(i = 1; i < 64; i = i+1)
+		begin:full_adder
+			full_adder a(.a(a[i]), .b(b[i]), .s(s[i]), .cin(tmp[i - 1]), .cout(tmp[i]));
+		end
+	endgenerate
+
+	assign cout = tmp[63];
+
 
 endmodule
 
