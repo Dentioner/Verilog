@@ -86,14 +86,6 @@ module booth_encoder(
 */
 	
 	
-	
-	
-	
-	
-
-
-
-
 
 	booth_gen bg1(.y(y), .s(s));
 
