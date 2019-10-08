@@ -118,8 +118,8 @@ wire ms_valid;
 wire ms_gr_we;
 wire [4:0] ms_dest;
 
-wire [31:0] es_alu_result;
-wire [31:0] ms_alu_result;
+wire [31:0] es_result;
+wire [31:0] ms_result;
 
 
 
@@ -144,13 +144,13 @@ assign ds_to_es_bus = {alu_op      ,  //135:124
 //assign ds_ready_go    = 1'b1;
 
 assign {es_load_op,     //39
-        es_alu_result,  //38:7
+        es_result,  //38:7
         es_valid,       //6
         es_gr_we,       //5
         es_dest         //4:0
         } = back_to_id_stage_bus_from_exe;
 
-assign {ms_alu_result,  //38:7
+assign {ms_result,  //38:7
         ms_valid,       //6
         ms_gr_we,       //5
         ms_dest         //4:0
@@ -284,13 +284,13 @@ regfile u_regfile(
 
 //assign rs_value = rf_rdata1;
 //assign rt_value = rf_rdata2;
-assign rs_value = (rf_raddr1 == es_dest && es_valid && es_gr_we)?  es_alu_result :        //首先看源寄存器号是不是等于alu的目标寄存器号，等于的话就可以将alu前递的值用上
-                  (rf_raddr1 == ms_dest && ms_valid && ms_gr_we)?  ms_alu_result :        //否则再看源寄存器号是不是等于mem的目标寄存器号，等于的话就将mem前递的值用上
+assign rs_value = (rf_raddr1 == es_dest && es_valid && es_gr_we)?  es_result :            //首先看源寄存器号是不是等于alu的目标寄存器号，等于的话就可以将alu前递的值用上
+                  (rf_raddr1 == ms_dest && ms_valid && ms_gr_we)?  ms_result :            //否则再看源寄存器号是不是等于mem的目标寄存器号，等于的话就将mem前递的值用上
                   (rf_raddr1 == rf_waddr && rf_we)? rf_wdata : rf_rdata1;                 //否则再看源寄存器号是不是等于wb的目标寄存器号，等于的话就将wb前递的值用上
                                                                                           //都不等于，再用rf读出来的数据
 
-assign rt_value = (rf_raddr2 == es_dest && es_valid && es_gr_we)?  es_alu_result :        //首先看源寄存器号是不是等于alu的目标寄存器号，等于的话就可以将alu前递的值用上
-                  (rf_raddr2 == ms_dest && ms_valid && ms_gr_we)?  ms_alu_result :        //否则再看源寄存器号是不是等于mem的目标寄存器号，等于的话就将mem前递的值用上
+assign rt_value = (rf_raddr2 == es_dest && es_valid && es_gr_we)?  es_result :            //首先看源寄存器号是不是等于alu的目标寄存器号，等于的话就可以将alu前递的值用上
+                  (rf_raddr2 == ms_dest && ms_valid && ms_gr_we)?  ms_result :            //否则再看源寄存器号是不是等于mem的目标寄存器号，等于的话就将mem前递的值用上
                   (rf_raddr2 == rf_waddr && rf_we)? rf_wdata : rf_rdata2;                 //否则再看源寄存器号是不是等于wb的目标寄存器号，等于的话就将wb前递的值用上
                                                                                           //都不等于，再用rf读出来的数据
 //以上每一级前递信号都要考虑是否是有效值
