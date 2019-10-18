@@ -21,20 +21,20 @@ reg         ws_valid;
 wire        ws_ready_go;
 
 reg [`MS_TO_WS_BUS_WD -1:0] ms_to_ws_bus_r;
-wire        ws_gr_we;
+wire [ 3:0] ws_gr_wen;
 wire [ 4:0] ws_dest;
 wire [31:0] ws_final_result;
 wire [31:0] ws_pc;
-assign {ws_gr_we       ,  //69:69
+assign {ws_gr_wen      ,  //72:69
         ws_dest        ,  //68:64
         ws_final_result,  //63:32
         ws_pc             //31:0
        } = ms_to_ws_bus_r;
 
-wire        rf_we;
+wire [3 :0] rf_wen;
 wire [4 :0] rf_waddr;
 wire [31:0] rf_wdata;
-assign ws_to_rf_bus = {rf_we   ,  //37:37
+assign ws_to_rf_bus = {rf_wen  ,  //40:37
                        rf_waddr,  //36:32
                        rf_wdata   //31:0
                       };//给寄存器堆的总线信号
@@ -54,13 +54,15 @@ always @(posedge clk) begin
     end
 end
 
-assign rf_we    = ws_gr_we&&ws_valid;
+//assign rf_we    = ws_gr_we&&ws_valid;
+assign rf_wen   = (!ws_valid)? 4'b0000 : ws_gr_wen;
 assign rf_waddr = ws_dest;
 assign rf_wdata = ws_final_result;
 
 // debug info generate
 assign debug_wb_pc       = ws_pc;
-assign debug_wb_rf_wen   = {4{rf_we}};
+//assign debug_wb_rf_wen   = {4{rf_we}};
+assign debug_wb_rf_wen   = rf_wen;
 assign debug_wb_rf_wnum  = ws_dest;
 assign debug_wb_rf_wdata = ws_final_result;
 

@@ -18,7 +18,7 @@ module exe_stage(
     output [31:0] data_sram_addr ,
     output [31:0] data_sram_wdata,
 
-    output [39:0]    back_to_id_stage_bus_from_exe  // 用于阻塞&前递机制的反馈信号
+    output [`ES_TO_DS_BUS_WD - 1:0]    back_to_id_stage_bus_from_exe  // 用于阻塞&前递机制的反馈信号
     //output [36:0]   exe_forwarding    
 );
 
@@ -51,9 +51,15 @@ wire        es_inst_lb    ;     // prj7 added
 wire        es_inst_lbu   ;     // prj7 added
 wire        es_inst_lh    ;     // prj7 added
 wire        es_inst_lhu   ;     // prj7 added
+wire        es_inst_lwl   ;     // prj7 added
+wire        es_inst_lwr   ;     // prj7 added
 
 wire        es_inst_sb    ;     // prj7 added
 wire        es_inst_sh    ;     // prj7 added
+
+wire [ 3:0]  gr_wen       ;     // prj7 added
+wire [ 3:0]  gr_wen_lwr   ;     // prj7 added
+wire [ 3:0]  gr_wen_lwl   ;     // prj7 added
 
 wire [31:0] es_final_result;    // prj6 added
 
@@ -62,17 +68,19 @@ wire [15:0] es_imm        ;
 wire [31:0] es_rs_value   ;
 wire [31:0] es_rt_value   ;
 wire [31:0] es_pc         ;
-assign {es_alu_op      ,                //150:139
-        es_load_op     ,                //138:138
-        es_src1_is_sa  ,                //137:137
-        es_src1_is_pc  ,                //136:136
-        es_src2_is_imm_symbol_extend ,  //135:135
-        es_src2_is_imm_zero_extend ,    //134:134
-        es_src2_is_8   ,                //133:133
-        es_gr_we       ,                //132:132
-        es_mem_we      ,                //131:131
-        es_inst_sb     ,                //130:130
-        es_inst_sh     ,                //129:129
+assign {es_alu_op      ,                //152:141
+        es_load_op     ,                //140:140
+        es_src1_is_sa  ,                //139:139
+        es_src1_is_pc  ,                //138:138
+        es_src2_is_imm_symbol_extend ,  //137:137
+        es_src2_is_imm_zero_extend ,    //136:136
+        es_src2_is_8   ,                //135:135
+        es_gr_we       ,                //134:134
+        es_mem_we      ,                //133:133
+        es_inst_sb     ,                //132:132
+        es_inst_sh     ,                //131:131
+        es_inst_lwl    ,                //130:130
+        es_inst_lwr    ,                //129:129
         es_inst_lh     ,                //128:128
         es_inst_lhu    ,                //127:127
         es_inst_lb     ,                //126:126
@@ -120,13 +128,14 @@ wire [3:0] data_sram_wen_sh;        // prj7 added
 assign last_2_bits_of_address = data_sram_addr[1:0];    // prj7 added
 
 assign es_res_from_mem = es_load_op;
-assign es_to_ms_bus = {last_2_bits_of_address,  //76:75
-                       es_inst_lh     ,         //74:74
-                       es_inst_lhu    ,         //73:73
-                       es_inst_lb     ,         //72:72
-                       es_inst_lbu    ,         //71:71
-                       es_res_from_mem,         //70:70 //合成给mem阶段的总线信号
-                       es_gr_we       ,         //69:69
+assign es_to_ms_bus = {last_2_bits_of_address,  //79:78
+                       es_inst_lh     ,         //77:77
+                       es_inst_lhu    ,         //76:76
+                       es_inst_lb     ,         //75:75
+                       es_inst_lbu    ,         //74:74
+                       es_res_from_mem,         //73:73 //合成给mem阶段的总线信号
+                       //es_gr_we       ,         //69:69
+                       gr_wen         ,         //72:69
                        es_dest        ,         //68:64
                        es_final_result,         //63:32
                        es_pc                    //31:0
@@ -134,10 +143,11 @@ assign es_to_ms_bus = {last_2_bits_of_address,  //76:75
 
 
 
-assign back_to_id_stage_bus_from_exe = {es_load_op,         //39
-                                        es_final_result,    //38:7
-                                        es_valid,           //6
-                                        es_gr_we,           //5
+assign back_to_id_stage_bus_from_exe = {es_load_op,         //42
+                                        es_final_result,    //41:10
+                                        es_valid,           //9
+                                        //es_gr_we,           //5
+                                        gr_wen,             //8:5          
                                         es_dest             //4:0
                                        };
 /*
@@ -220,6 +230,22 @@ assign wdata_lo = (es_inst_mtlo) ? es_rs_value :
 
 assign es_final_result = (es_inst_mfhi)? hi :
                          (es_inst_mflo)? lo : es_alu_result;
+
+
+assign gr_wen = (!gr_we)? 4'b0000 :                 // 如果不是写寄存器的指令，直接全0
+                (inst_lwl) ? gr_wen_lwl :           // 如果是lwl，就按lwl的来
+                (inst_lwr) ? gr_wen_lwr : 4'b1111;  // 如果是lwr，就按lwr的来
+                                                    // 上述情况都不是则说明是正常的写法，全1
+
+assign gr_wen_lwr = (last_2_bits_of_address == 2'b00)? 4'b1111 : 
+                    (last_2_bits_of_address == 2'b01)? 4'b0111 :
+                    (last_2_bits_of_address == 2'b10)? 4'b0011 : 4'b0001;
+
+assign gr_wen_lwl = (last_2_bits_of_address == 2'b00)? 4'b1000 : 
+                    (last_2_bits_of_address == 2'b01)? 4'b1100 :
+                    (last_2_bits_of_address == 2'b10)? 4'b1110 : 4'b1111;
+
+
 
 mutiplier m1(
     .mult1(es_alu_src1),

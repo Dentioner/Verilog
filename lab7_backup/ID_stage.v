@@ -17,8 +17,8 @@ module id_stage(
     //to rf: for write back
     input  [`WS_TO_RF_BUS_WD -1:0] ws_to_rf_bus,
     //阻塞判断信号
-    input [39:0] back_to_id_stage_bus_from_exe,
-    input [38:0] back_to_id_stage_bus_from_mem
+    input  [`ES_TO_DS_BUS_WD -1:0] back_to_id_stage_bus_from_exe,
+    input  [`MS_TO_DS_BUS_WD -1:0] back_to_id_stage_bus_from_mem
 
 );
 
@@ -34,10 +34,11 @@ wire [31:0] ds_pc  ;
 assign {ds_inst,
         ds_pc  } = fs_to_ds_bus_r;
 
-wire        rf_we   ;//寄存器堆的一堆信号
+wire        rf_we   ;
+wire [ 3:0] rf_wen  ;//寄存器堆的一堆信号
 wire [ 4:0] rf_waddr;
 wire [31:0] rf_wdata;
-assign {rf_we   ,  //37:37
+assign {rf_wen  ,  //40:37
         rf_waddr,  //36:32
         rf_wdata   //31:0
        } = ws_to_rf_bus;
@@ -135,6 +136,8 @@ wire        inst_lb;        // prj7 added
 wire        inst_lbu;       // prj7 added
 wire        inst_lh;        // prj7 added
 wire        inst_lhu;       // prj7 added
+wire        inst_lwl;       // prj7 added
+wire        inst_lwr;       // prj7 added
 
 wire        inst_sb;        // prj7 added
 wire        inst_sh;        // prj7 added
@@ -161,15 +164,23 @@ wire        rs_less_than_zero;    // rs < 0
 wire es_load_op;
 wire es_valid;
 wire es_gr_we;
+wire [3:0] es_gr_wen;
+
 wire [4:0] es_dest;
 
 wire ms_valid;
 wire ms_gr_we;
+wire [3:0] ms_gr_wen;
 wire [4:0] ms_dest;
 
 wire [31:0] es_result;
 wire [31:0] ms_result;
 
+//wire [31:0] es_result_for_handing;
+wire [31:0] ms_result_for_handing_rs;
+wire [31:0] ms_result_for_handing_rt;
+wire [31:0] rf_wdata_for_handing_rs;
+wire [31:0] rf_wdata_for_handing_rt;
 //wire read_hi;
 //wire read_lo;
 
@@ -177,17 +188,19 @@ wire [31:0] ms_result;
 
 assign br_bus       = {br_taken,br_target};
 
-assign ds_to_es_bus = {alu_op      ,                //150:139
-                       load_op     ,                //138:138 //??????????????bug？？？？？？？？？？？？？整个模块这个信号就没有个源头
-                       src1_is_sa  ,                //137:137 //这4个信号或许是表示alu的2个操作数从哪儿来的
-                       src1_is_pc  ,                //136:136
-                       src2_is_imm_symbol_extend ,  //135:135
-                       src2_is_imm_zero_extend,     //134:134
-                       src2_is_8   ,                //133:133
-                       gr_we       ,                //132:132
-                       mem_we      ,                //131:131
-                       inst_sb     ,                //130:130
-                       inst_sh     ,                //129:129
+assign ds_to_es_bus = {alu_op      ,                //152:141
+                       load_op     ,                //140:140 //??????????????bug？？？？？？？？？？？？？整个模块这个信号就没有个源头
+                       src1_is_sa  ,                //139:139 //这4个信号或许是表示alu的2个操作数从哪儿来的
+                       src1_is_pc  ,                //138:138
+                       src2_is_imm_symbol_extend ,  //137:137
+                       src2_is_imm_zero_extend,     //136:136
+                       src2_is_8   ,                //135:135
+                       gr_we       ,                //134:134
+                       mem_we      ,                //133:133
+                       inst_sb     ,                //132:132
+                       inst_sh     ,                //131:131
+                       inst_lwl    ,                //130:130
+                       inst_lwr    ,                //129:129
                        inst_lh     ,                //128:128
                        inst_lhu    ,                //127:127
                        inst_lb     ,                //126:126
@@ -209,16 +222,16 @@ assign ds_to_es_bus = {alu_op      ,                //150:139
 
 //assign ds_ready_go    = 1'b1;
 
-assign {es_load_op,     //39
-        es_result,      //38:7
-        es_valid,       //6
-        es_gr_we,       //5
+assign {es_load_op,     //42
+        es_result,      //41:10
+        es_valid,       //9
+        es_gr_wen,      //8:5
         es_dest         //4:0
         } = back_to_id_stage_bus_from_exe;
 
-assign {ms_result,      //38:7
-        ms_valid,       //6
-        ms_gr_we,       //5
+assign {ms_result,      //41:10
+        ms_valid,       //9
+        ms_gr_wen,      //8:5
         ms_dest         //4:0
         } = back_to_id_stage_bus_from_mem;
 
@@ -340,12 +353,14 @@ assign inst_lb     = op_d[6'h20];                 // prj7 added
 assign inst_lbu    = op_d[6'h24];                 // prj7 added
 assign inst_lh     = op_d[6'h21];                 // prj7 added
 assign inst_lhu    = op_d[6'h25];                 // prj7 added
+assign inst_lwl    = op_d[6'h22];                 // prj7 added
+assign inst_lwr    = op_d[6'h26];                 // prj7 added
 assign inst_sb     = op_d[6'h28];                 // prj7 added
 assign inst_sh     = op_d[6'h29];                 // prj7 added
 
 
 assign alu_op[ 0] = inst_add | inst_addu | inst_addi   | inst_addiu |
-                    inst_lw  | inst_lb   | inst_lbu    | inst_lh    | inst_lhu | 
+                    inst_lw  | inst_lb   | inst_lbu    | inst_lh    | inst_lhu | inst_lwl | inst_lwr |
                     inst_sw  | inst_sb   | inst_sh     |
                     inst_jal | inst_jalr | inst_bltzal | inst_bgezal;
 assign alu_op[ 1] = inst_sub | inst_subu;
@@ -360,23 +375,23 @@ assign alu_op[ 9] = inst_srl | inst_srlv;
 assign alu_op[10] = inst_sra | inst_srav;
 assign alu_op[11] = inst_lui;
 
-assign load_op = inst_lw | inst_lb | inst_lbu | inst_lh | inst_lhu;
+assign load_op = inst_lw | inst_lb | inst_lbu | inst_lh | inst_lhu | inst_lwl | inst_lwr;
 
 assign src1_is_sa   = inst_sll   | inst_srl | inst_sra;
 assign src1_is_pc   = inst_jal | inst_jalr | inst_bgezal | inst_bltzal;
 
 assign src2_is_imm_symbol_extend = inst_addi | inst_addiu | 
                                    inst_lui  | 
-                                   inst_lw   | inst_lb | inst_lbu | inst_lh | inst_lhu | 
+                                   inst_lw   | inst_lb | inst_lbu | inst_lh | inst_lhu | inst_lwl | inst_lwr |
                                    inst_sw   | inst_sb | inst_sh  |
                                    inst_slti | inst_sltiu;
 assign src2_is_imm_zero_extend   = inst_andi | inst_ori | inst_xori;
 assign src2_is_8    = inst_jal | inst_jalr | inst_bgezal | inst_bltzal;
-assign res_from_mem = inst_lw | inst_lb | inst_lbu | inst_lh | inst_lhu;
+assign res_from_mem = inst_lw | inst_lb | inst_lbu | inst_lh | inst_lhu | inst_lwr | inst_lwl;
 assign dst_is_r31   = inst_jal | inst_bltzal | inst_bgezal;
 assign dst_is_rt    = inst_addi | inst_addiu | 
                       inst_lui | 
-                      inst_lw | inst_lb | inst_lbu | inst_lh | inst_lhu | 
+                      inst_lw | inst_lb | inst_lbu | inst_lh | inst_lhu | inst_lwl | inst_lwr |
                       inst_slti | inst_sltiu | inst_andi | inst_ori | inst_xori;
 assign gr_we        = ~inst_sw & ~inst_sb & ~inst_sh & 
                       ~inst_beq & ~inst_bne & ~inst_jr & ~inst_j & 
@@ -402,23 +417,47 @@ regfile u_regfile(
     .rdata1 (rf_rdata1),
     .raddr2 (rf_raddr2),
     .rdata2 (rf_rdata2),
-    .we     (rf_we    ),
+    .wen    (rf_wen   ),
     .waddr  (rf_waddr ),
     .wdata  (rf_wdata )
     );
 
 //assign rs_value = rf_rdata1;
 //assign rt_value = rf_rdata2;
-assign rs_value = (rf_raddr1 == es_dest && es_valid && es_gr_we)?  es_result :            //首先看源寄存器号是不是等于alu的目标寄存器号，等于的话就可以将alu前递的值用上
-                  (rf_raddr1 == ms_dest && ms_valid && ms_gr_we)?  ms_result :            //否则再看源寄存器号是不是等于mem的目标寄存器号，等于的话就将mem前递的值用上
-                  (rf_raddr1 == rf_waddr && rf_we)? rf_wdata : rf_rdata1;                 //否则再看源寄存器号是不是等于wb的目标寄存器号，等于的话就将wb前递的值用上
-                                                                                          //都不等于，再用rf读出来的数据
+assign rf_we    = (rf_wen    == 4'b0000)? 0 : 1; //这三个信号现在仅仅是为了方便前递处理起见而留着的
+assign es_gr_we = (es_gr_wen == 4'b0000)? 0 : 1;
+assign ms_gr_we = (ms_gr_wen == 4'b0000)? 0 : 1;
 
-assign rt_value = (rf_raddr2 == es_dest && es_valid && es_gr_we)?  es_result :            //首先看源寄存器号是不是等于alu的目标寄存器号，等于的话就可以将alu前递的值用上
-                  (rf_raddr2 == ms_dest && ms_valid && ms_gr_we)?  ms_result :            //否则再看源寄存器号是不是等于mem的目标寄存器号，等于的话就将mem前递的值用上
-                  (rf_raddr2 == rf_waddr && rf_we)? rf_wdata : rf_rdata2;                 //否则再看源寄存器号是不是等于wb的目标寄存器号，等于的话就将wb前递的值用上
-                                                                                          //都不等于，再用rf读出来的数据
+assign rs_value = (rf_raddr1 == es_dest && es_valid && es_gr_we)?  es_result :                            //首先看源寄存器号是不是等于alu的目标寄存器号，等于的话就可以将alu前递的值用上
+                  (rf_raddr1 == ms_dest && ms_valid && ms_gr_we)?  ms_result_for_handing_rs :             //否则再看源寄存器号是不是等于mem的目标寄存器号，等于的话就将mem前递的值用上
+                  (rf_raddr1 == rf_waddr && rf_we)? rf_wdata_for_handing_rs : rf_rdata1;                  //否则再看源寄存器号是不是等于wb的目标寄存器号，等于的话就将wb前递的值用上
+                                                                                                          //都不等于，再用rf读出来的数据
+
+assign rt_value = (rf_raddr2 == es_dest && es_valid && es_gr_we)?  es_result :                            //首先看源寄存器号是不是等于alu的目标寄存器号，等于的话就可以将alu前递的值用上
+                  (rf_raddr2 == ms_dest && ms_valid && ms_gr_we)?  ms_result_for_handing_rt :             //否则再看源寄存器号是不是等于mem的目标寄存器号，等于的话就将mem前递的值用上
+                  (rf_raddr2 == rf_waddr && rf_we)? rf_wdata_for_handing_rt : rf_rdata2;                  //否则再看源寄存器号是不是等于wb的目标寄存器号，等于的话就将wb前递的值用上
+                                                                                                          //都不等于，再用rf读出来的数据
 //以上每一级前递信号都要考虑是否是有效值
+assign ms_result_for_handing_rs [ 7: 0] = (ms_gr_wen[0]) ? ms_result[ 7: 0] : rf_rdata1[ 7: 0];
+assign ms_result_for_handing_rs [15: 8] = (ms_gr_wen[1]) ? ms_result[15: 8] : rf_rdata1[15: 8];
+assign ms_result_for_handing_rs [23:16] = (ms_gr_wen[2]) ? ms_result[23:16] : rf_rdata1[23:16];
+assign ms_result_for_handing_rs [31:24] = (ms_gr_wen[3]) ? ms_result[31:24] : rf_rdata1[31:24];
+
+assign ms_result_for_handing_rt [ 7: 0] = (ms_gr_wen[0]) ? ms_result[ 7: 0] : rf_rdata2[ 7: 0];
+assign ms_result_for_handing_rt [15: 8] = (ms_gr_wen[1]) ? ms_result[15: 8] : rf_rdata2[15: 8];
+assign ms_result_for_handing_rt [23:16] = (ms_gr_wen[2]) ? ms_result[23:16] : rf_rdata2[23:16];
+assign ms_result_for_handing_rt [31:24] = (ms_gr_wen[3]) ? ms_result[31:24] : rf_rdata2[31:24];
+
+assign rf_wdata_for_handing_rs [ 7: 0] = (rf_wen[0]) ? rf_wdata[ 7: 0] : rf_rdata1[ 7: 0];
+assign rf_wdata_for_handing_rs [15: 8] = (rf_wen[1]) ? rf_wdata[15: 8] : rf_rdata1[15: 8];
+assign rf_wdata_for_handing_rs [23:16] = (rf_wen[2]) ? rf_wdata[23:16] : rf_rdata1[23:16];
+assign rf_wdata_for_handing_rs [31:24] = (rf_wen[3]) ? rf_wdata[31:24] : rf_rdata1[31:24];
+
+assign rf_wdata_for_handing_rt [ 7: 0] = (rf_wen[0]) ? rf_wdata[ 7: 0] : rf_rdata2[ 7: 0];
+assign rf_wdata_for_handing_rt [15: 8] = (rf_wen[1]) ? rf_wdata[15: 8] : rf_rdata2[15: 8];
+assign rf_wdata_for_handing_rt [23:16] = (rf_wen[2]) ? rf_wdata[23:16] : rf_rdata2[23:16];
+assign rf_wdata_for_handing_rt [31:24] = (rf_wen[3]) ? rf_wdata[31:24] : rf_rdata2[31:24];
+
 
 assign rs_eq_rt = (rs_value == rt_value);
 

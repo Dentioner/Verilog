@@ -38,8 +38,8 @@ wire [`WS_TO_RF_BUS_WD -1:0] ws_to_rf_bus;//38  bit
 wire [`BR_BUS_WD       -1:0] br_bus;      //32  bit
 
 //阻塞&前递
-wire [39:0] back_to_id_stage_bus_from_exe;
-wire [38:0] back_to_id_stage_bus_from_mem;
+wire [`ES_TO_DS_BUS_WD -1:0] back_to_id_stage_bus_from_exe;
+wire [`MS_TO_DS_BUS_WD -1:0] back_to_id_stage_bus_from_mem;
 
 
 // IF stage

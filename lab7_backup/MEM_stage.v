@@ -14,7 +14,7 @@ module mem_stage(
     output [`MS_TO_WS_BUS_WD -1:0] ms_to_ws_bus  ,
     //from data-sram
     input  [31                 :0] data_sram_rdata,
-    output [38:0]    back_to_id_stage_bus_from_mem
+    output [`MS_TO_DS_BUS_WD -1:0] back_to_id_stage_bus_from_mem
     //output [36:0]   mem_forwarding
 );
 
@@ -23,7 +23,7 @@ wire        ms_ready_go;
 
 reg [`ES_TO_MS_BUS_WD -1:0] es_to_ms_bus_r;
 wire        ms_res_from_mem;
-wire        ms_gr_we;
+wire [ 3:0] ms_gr_wen;
 wire [ 4:0] ms_dest;
 wire [31:0] ms_alu_result;
 wire [31:0] ms_pc;
@@ -36,13 +36,13 @@ wire ms_inst_lhu;   // prj7 added
 
 
 
-assign {last_2_bits_of_address,  //76:75
-        ms_inst_lh     ,         //74:74
-        ms_inst_lhu    ,         //73:73
-        ms_inst_lb     ,         //72:72
-        ms_inst_lbu    ,         //71:71
-        ms_res_from_mem,         //70:70
-        ms_gr_we       ,         //69:69
+assign {last_2_bits_of_address,  //79:78
+        ms_inst_lh     ,         //77:77
+        ms_inst_lhu    ,         //76:76
+        ms_inst_lb     ,         //75:75
+        ms_inst_lbu    ,         //74:74
+        ms_res_from_mem,         //73:73
+        ms_gr_wen      ,         //72:69
         ms_dest        ,         //68:64
         ms_alu_result  ,         //63:32
         ms_pc                    //31:0
@@ -56,7 +56,7 @@ wire [31:0] mem_result_lbu;     // prj7 added
 wire [31:0] mem_result_lh;      // prj7 added
 wire [31:0] mem_result_lhu;     // prj7 added
 
-assign ms_to_ws_bus = {ms_gr_we       ,  //69:69
+assign ms_to_ws_bus = {ms_gr_wen      ,  //72:69
                        ms_dest        ,  //68:64
                        ms_final_result,  //63:32
                        ms_pc             //31:0
@@ -116,9 +116,9 @@ assign ms_final_result = ms_res_from_mem ? mem_result //判断写回的数据到
                                          : ms_alu_result;//res的意思应该就是result
 
 
-assign back_to_id_stage_bus_from_mem = {ms_final_result,    //38:7
-                                        ms_valid,           //6
-                                        ms_gr_we,           //5
+assign back_to_id_stage_bus_from_mem = {ms_final_result,    //41:10
+                                        ms_valid,           //9
+                                        ms_gr_wen,          //8:5
                                         ms_dest             //4:0
                                         };
 /*
