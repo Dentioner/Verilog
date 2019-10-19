@@ -141,6 +141,8 @@ wire        inst_lwr;       // prj7 added
 
 wire        inst_sb;        // prj7 added
 wire        inst_sh;        // prj7 added
+wire        inst_swl;       // prj7 added
+wire        inst_swr;       // prj7 added
 
 wire        dst_is_r31;  
 wire        dst_is_rt;   
@@ -188,15 +190,17 @@ wire [31:0] rf_wdata_for_handing_rt;
 
 assign br_bus       = {br_taken,br_target};
 
-assign ds_to_es_bus = {alu_op      ,                //152:141
-                       load_op     ,                //140:140 //??????????????bug？？？？？？？？？？？？？整个模块这个信号就没有个源头
-                       src1_is_sa  ,                //139:139 //这4个信号或许是表示alu的2个操作数从哪儿来的
-                       src1_is_pc  ,                //138:138
-                       src2_is_imm_symbol_extend ,  //137:137
-                       src2_is_imm_zero_extend,     //136:136
-                       src2_is_8   ,                //135:135
-                       gr_we       ,                //134:134
-                       mem_we      ,                //133:133
+assign ds_to_es_bus = {alu_op      ,                //154:143
+                       load_op     ,                //142:142 //??????????????bug？？？？？？？？？？？？？整个模块这个信号就没有个源头
+                       src1_is_sa  ,                //141:141 //这4个信号或许是表示alu的2个操作数从哪儿来的
+                       src1_is_pc  ,                //140:140
+                       src2_is_imm_symbol_extend ,  //139:139
+                       src2_is_imm_zero_extend,     //138:138
+                       src2_is_8   ,                //137:137
+                       gr_we       ,                //136:136
+                       mem_we      ,                //135:135
+                       inst_swl    ,                //134:134
+                       inst_swr    ,                //133:133
                        inst_sb     ,                //132:132
                        inst_sh     ,                //131:131
                        inst_lwl    ,                //130:130
@@ -348,7 +352,7 @@ assign inst_blez   = op_d[6'h06];                 // prj7 added
 assign inst_bltzal = op_d[6'h01] & rt_d[5'h10];   // prj7 added
 assign inst_bgezal = op_d[6'h01] & rt_d[5'h11];   // prj7 added
 assign inst_j      = op_d[6'h02];                 // prj7 added
-assign inst_jalr   = op_d[6'h00] & func_d[6'h09] & rt_d[5'h00] & rd_d[5'h00] & sa_d[5'h00]; // prj7 added
+assign inst_jalr   = op_d[6'h00] & func_d[6'h09] & rt_d[5'h00] & sa_d[5'h00]; // prj7 added
 assign inst_lb     = op_d[6'h20];                 // prj7 added
 assign inst_lbu    = op_d[6'h24];                 // prj7 added
 assign inst_lh     = op_d[6'h21];                 // prj7 added
@@ -357,11 +361,13 @@ assign inst_lwl    = op_d[6'h22];                 // prj7 added
 assign inst_lwr    = op_d[6'h26];                 // prj7 added
 assign inst_sb     = op_d[6'h28];                 // prj7 added
 assign inst_sh     = op_d[6'h29];                 // prj7 added
+assign inst_swl    = op_d[6'h2a];                 // prj7 added
+assign inst_swr    = op_d[6'h2e];                 // prj7 added
 
 
 assign alu_op[ 0] = inst_add | inst_addu | inst_addi   | inst_addiu |
                     inst_lw  | inst_lb   | inst_lbu    | inst_lh    | inst_lhu | inst_lwl | inst_lwr |
-                    inst_sw  | inst_sb   | inst_sh     |
+                    inst_sw  | inst_sb   | inst_sh     | inst_swl   | inst_swr |
                     inst_jal | inst_jalr | inst_bltzal | inst_bgezal;
 assign alu_op[ 1] = inst_sub | inst_subu;
 assign alu_op[ 2] = inst_slti | inst_slt;
@@ -383,7 +389,7 @@ assign src1_is_pc   = inst_jal | inst_jalr | inst_bgezal | inst_bltzal;
 assign src2_is_imm_symbol_extend = inst_addi | inst_addiu | 
                                    inst_lui  | 
                                    inst_lw   | inst_lb | inst_lbu | inst_lh | inst_lhu | inst_lwl | inst_lwr |
-                                   inst_sw   | inst_sb | inst_sh  |
+                                   inst_sw   | inst_sb | inst_sh  | inst_swl| inst_swr |
                                    inst_slti | inst_sltiu;
 assign src2_is_imm_zero_extend   = inst_andi | inst_ori | inst_xori;
 assign src2_is_8    = inst_jal | inst_jalr | inst_bgezal | inst_bltzal;
@@ -393,11 +399,11 @@ assign dst_is_rt    = inst_addi | inst_addiu |
                       inst_lui | 
                       inst_lw | inst_lb | inst_lbu | inst_lh | inst_lhu | inst_lwl | inst_lwr |
                       inst_slti | inst_sltiu | inst_andi | inst_ori | inst_xori;
-assign gr_we        = ~inst_sw & ~inst_sb & ~inst_sh & 
+assign gr_we        = ~inst_sw & ~inst_sb & ~inst_sh & ~inst_swl & ~inst_swr &
                       ~inst_beq & ~inst_bne & ~inst_jr & ~inst_j & 
                       ~inst_bgez & ~inst_bgtz & ~inst_bltz & ~inst_blez & 
                       ~inst_mult & ~inst_multu & ~inst_div & ~inst_divu & ~inst_mthi & ~inst_mtlo;
-assign mem_we       = inst_sw | inst_sb | inst_sh;
+assign mem_we       = inst_sw | inst_sb | inst_sh | inst_swl | inst_swr;
 //assign hi_we        = inst_mult | inst_multu | inst_mthi;
 //assign lo_we        = inst_mult | inst_multu | inst_mtlo;
 //assign div_en       = inst_div | inst_divu;
@@ -461,8 +467,8 @@ assign rf_wdata_for_handing_rt [31:24] = (rf_wen[3]) ? rf_wdata[31:24] : rf_rdat
 
 assign rs_eq_rt = (rs_value == rt_value);
 
-assign rs_greater_than_zero = (rs_value > 0)? 1 : 0;
-assign rs_less_than_zero    = (rs_value < 0)? 1 : 0;
+assign rs_greater_than_zero = ($signed(rs_value) > 0)? 1 : 0;
+assign rs_less_than_zero    = ($signed(rs_value) < 0)? 1 : 0;
 
 
 assign br_taken = (   inst_beq    &&  rs_eq_rt //看样子br似乎意味着branch

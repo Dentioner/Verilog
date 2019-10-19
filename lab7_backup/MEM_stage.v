@@ -33,10 +33,13 @@ wire ms_inst_lb;    // prj7 added
 wire ms_inst_lbu;   // prj7 added
 wire ms_inst_lh;    // prj7 added
 wire ms_inst_lhu;   // prj7 added
+wire ms_inst_lwl;   // prj7 added
+wire ms_inst_lwr;   // prj7 added
 
 
-
-assign {last_2_bits_of_address,  //79:78
+assign {last_2_bits_of_address,  //81:80
+        ms_inst_lwl    ,         //79:79
+        ms_inst_lwr    ,         //78:78 
         ms_inst_lh     ,         //77:77
         ms_inst_lhu    ,         //76:76
         ms_inst_lb     ,         //75:75
@@ -55,6 +58,8 @@ wire [31:0] mem_result_lb;      // prj7 added
 wire [31:0] mem_result_lbu;     // prj7 added
 wire [31:0] mem_result_lh;      // prj7 added
 wire [31:0] mem_result_lhu;     // prj7 added
+wire [31:0] mem_result_lwl;     // prj7 added
+wire [31:0] mem_result_lwr;     // prj7 added
 
 assign ms_to_ws_bus = {ms_gr_wen      ,  //72:69
                        ms_dest        ,  //68:64
@@ -82,7 +87,9 @@ end
 assign mem_result = (ms_inst_lb) ? mem_result_lb :
                     (ms_inst_lbu)? mem_result_lbu:
                     (ms_inst_lh) ? mem_result_lh :
-                    (ms_inst_lhu)? mem_result_lhu: data_sram_rdata;
+                    (ms_inst_lhu)? mem_result_lhu:
+                    (ms_inst_lwl)? mem_result_lwl:
+                    (ms_inst_lwr)? mem_result_lwr:data_sram_rdata;
 
 
 
@@ -110,6 +117,13 @@ assign mem_result_lhu = (last_2_bits_of_address == 2'b00)? {{16{1'b0}}, data_sra
                         (last_2_bits_of_address == 2'b10)? {{16{1'b0}}, data_sram_rdata[31:16]} : 
                                                            {{16{1'b0}}, data_sram_rdata[31:16]};
 
+assign mem_result_lwl = (last_2_bits_of_address == 2'b00)? {4{data_sram_rdata[ 7:0]}} : 
+                        (last_2_bits_of_address == 2'b01)? {2{data_sram_rdata[15:0]}} :
+                        (last_2_bits_of_address == 2'b10)? {data_sram_rdata[24:0], 8'b0} : data_sram_rdata;
+
+assign mem_result_lwr = (last_2_bits_of_address == 2'b11)? {4{data_sram_rdata[31:24]}} :
+                        (last_2_bits_of_address == 2'b10)? {2{data_sram_rdata[31:16]}} :
+                        (last_2_bits_of_address == 2'b01)? {8'b0, data_sram_rdata[31:8]} : data_sram_rdata;
 
 
 assign ms_final_result = ms_res_from_mem ? mem_result //判断写回的数据到底是从mem里面来的，还是alu算出来的

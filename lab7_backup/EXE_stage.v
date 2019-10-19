@@ -56,6 +56,8 @@ wire        es_inst_lwr   ;     // prj7 added
 
 wire        es_inst_sb    ;     // prj7 added
 wire        es_inst_sh    ;     // prj7 added
+wire        es_inst_swl   ;     // prj7 added
+wire        es_inst_swr   ;     // prj7 added
 
 wire [ 3:0]  gr_wen       ;     // prj7 added
 wire [ 3:0]  gr_wen_lwr   ;     // prj7 added
@@ -68,15 +70,17 @@ wire [15:0] es_imm        ;
 wire [31:0] es_rs_value   ;
 wire [31:0] es_rt_value   ;
 wire [31:0] es_pc         ;
-assign {es_alu_op      ,                //152:141
-        es_load_op     ,                //140:140
-        es_src1_is_sa  ,                //139:139
-        es_src1_is_pc  ,                //138:138
-        es_src2_is_imm_symbol_extend ,  //137:137
-        es_src2_is_imm_zero_extend ,    //136:136
-        es_src2_is_8   ,                //135:135
-        es_gr_we       ,                //134:134
-        es_mem_we      ,                //133:133
+assign {es_alu_op      ,                //154:143
+        es_load_op     ,                //142:142
+        es_src1_is_sa  ,                //141:141
+        es_src1_is_pc  ,                //140:140
+        es_src2_is_imm_symbol_extend ,  //139:139
+        es_src2_is_imm_zero_extend ,    //138:138
+        es_src2_is_8   ,                //137:137
+        es_gr_we       ,                //136:136
+        es_mem_we      ,                //135:135
+        es_inst_swl    ,                //134:134
+        es_inst_swr    ,                //133:133
         es_inst_sb     ,                //132:132
         es_inst_sh     ,                //131:131
         es_inst_lwl    ,                //130:130
@@ -124,11 +128,18 @@ wire [1:0] last_2_bits_of_address;  // prj7 added
 
 wire [3:0] data_sram_wen_sb;        // prj7 added
 wire [3:0] data_sram_wen_sh;        // prj7 added
+wire [3:0] data_sram_wen_swl;       // prj7 added
+wire [3:0] data_sram_wen_swr;       // prj7 added
+
+wire [31:0] data_sram_wdata_swl;    // prj7 added
+wire [31:0] data_sram_wdata_swr;    // prj7 added
 
 assign last_2_bits_of_address = data_sram_addr[1:0];    // prj7 added
 
 assign es_res_from_mem = es_load_op;
-assign es_to_ms_bus = {last_2_bits_of_address,  //79:78
+assign es_to_ms_bus = {last_2_bits_of_address,  //81:80
+                       es_inst_lwl    ,         //79:79
+                       es_inst_lwr    ,         //78:78
                        es_inst_lh     ,         //77:77
                        es_inst_lhu    ,         //76:76
                        es_inst_lb     ,         //75:75
@@ -193,23 +204,43 @@ alu u_alu(
 assign data_sram_en    = 1'b1;
 //assign data_sram_wen   = es_mem_we&&es_valid ? 4'hf : 4'h0;//ram 字节写使能信号，高电平有效
 assign data_sram_wen   = ((!es_mem_we) || (!es_valid))? 4'h0 :
-                         (es_inst_sb)? data_sram_wen_sb      : 
-                         (es_inst_sh)? data_sram_wen_sh      : 4'hf;
+                         (es_inst_sb) ? data_sram_wen_sb      : 
+                         (es_inst_sh) ? data_sram_wen_sh      : 
+                         (es_inst_swl)? data_sram_wen_swl     :
+                         (es_inst_swr)? data_sram_wen_swr     : 4'hf;
 
 
-assign data_sram_wen_sb = (last_2_bits_of_address == 2'b00)? 4'b0001 : 
-                          (last_2_bits_of_address == 2'b01)? 4'b0010 : 
-                          (last_2_bits_of_address == 2'b10)? 4'b0100 : 4'b1000;
+assign data_sram_wen_sb  = (last_2_bits_of_address == 2'b00)? 4'b0001 : 
+                           (last_2_bits_of_address == 2'b01)? 4'b0010 : 
+                           (last_2_bits_of_address == 2'b10)? 4'b0100 : 4'b1000;
 // 虽然说sh的地址实际上只有00和10两种情况，但是由于不熟悉此cpu的例外处理机制，为了方便起见将异常的01和11也用00和10处理
-assign data_sram_wen_sh = (last_2_bits_of_address == 2'b00)? 4'b0011 : 
-                          (last_2_bits_of_address == 2'b01)? 4'b0011 : 
-                          (last_2_bits_of_address == 2'b10)? 4'b1100 : 4'b1100;
+assign data_sram_wen_sh  = (last_2_bits_of_address == 2'b00)? 4'b0011 : 
+                           (last_2_bits_of_address == 2'b01)? 4'b0011 : 
+                           (last_2_bits_of_address == 2'b10)? 4'b1100 : 4'b1100;
 
+assign data_sram_wen_swl = (last_2_bits_of_address == 2'b00)? 4'b0001 : 
+                           (last_2_bits_of_address == 2'b01)? 4'b0011 : 
+                           (last_2_bits_of_address == 2'b10)? 4'b0111 : 4'b1111;
+
+assign data_sram_wen_swr = (last_2_bits_of_address == 2'b00)? 4'b1111 : 
+                           (last_2_bits_of_address == 2'b01)? 4'b1110 : 
+                           (last_2_bits_of_address == 2'b10)? 4'b1100 : 4'b1000;
 
 assign data_sram_addr  = es_alu_result; 
 //assign data_sram_wdata = es_rt_value;
-assign data_sram_wdata = (es_inst_sb)? {4{es_rt_value[ 7:0]}} :
-                         (es_inst_sh)? {2{es_rt_value[15:0]}} : es_rt_value;
+assign data_sram_wdata = (es_inst_sb)?  {4{es_rt_value[ 7:0]}} :
+                         (es_inst_sh)?  {2{es_rt_value[15:0]}} : 
+                         (es_inst_swr)? data_sram_wdata_swr    : 
+                         (es_inst_swl)? data_sram_wdata_swl    : es_rt_value;
+
+assign data_sram_wdata_swl = (last_2_bits_of_address == 2'b00)? {4{es_rt_value[31:24]}} : 
+                             (last_2_bits_of_address == 2'b01)? {2{es_rt_value[31:16]}} :
+                             (last_2_bits_of_address == 2'b10)? {8'b0, {es_rt_value[31:8]}} : es_rt_value;
+
+assign data_sram_wdata_swr = (last_2_bits_of_address == 2'b11)? {4{es_rt_value[ 7:0]}} : 
+                             (last_2_bits_of_address == 2'b10)? {2{es_rt_value[15:0]}} :
+                             (last_2_bits_of_address == 2'b01)? {{es_rt_value[23:0], 8'b0}} : es_rt_value;
+
 
 
 
@@ -232,10 +263,10 @@ assign es_final_result = (es_inst_mfhi)? hi :
                          (es_inst_mflo)? lo : es_alu_result;
 
 
-assign gr_wen = (!gr_we)? 4'b0000 :                 // 如果不是写寄存器的指令，直接全0
-                (inst_lwl) ? gr_wen_lwl :           // 如果是lwl，就按lwl的来
-                (inst_lwr) ? gr_wen_lwr : 4'b1111;  // 如果是lwr，就按lwr的来
-                                                    // 上述情况都不是则说明是正常的写法，全1
+assign gr_wen = (!es_gr_we)? 4'b0000 :                  // 如果不是写寄存器的指令，直接全0
+                (es_inst_lwl) ? gr_wen_lwl :            // 如果是lwl，就按lwl的来
+                (es_inst_lwr) ? gr_wen_lwr : 4'b1111;   // 如果是lwr，就按lwr的来
+                                                        // 上述情况都不是则说明是正常的写法，全1
 
 assign gr_wen_lwr = (last_2_bits_of_address == 2'b00)? 4'b1111 : 
                     (last_2_bits_of_address == 2'b01)? 4'b0111 :
