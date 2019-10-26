@@ -8,23 +8,31 @@ module cp0(
 	input 			mtc0_we,
 	input  [31:0]	cp0_wdata, 
 	input  [7:0]	cp0_addr,
-	input  			eret_reflush,
+	input  			eret_flush,
 	input 			wb_ex,
 	input  [4:0] 	wb_exccode,
 	input 			wb_bd,
 	input  [31:0] 	wb_pc,
-
-	//output [31:0]	cp0_rdata
-	output [31:0] 	cp0_status,
-	output [31:0]	cp0_cause,
-	output [31:0]	cp0_epc_wire,
+	input  [5:0]	ext_int_in,
+	output [31:0]	cp0_rdata
+	//output [31:0] 	cp0_status,
+	//output [31:0]	cp0_cause,
+	//output [31:0]	cp0_epc_wire,
 	);
+wire [31:0] cp0_status;
+wire [31:0] cp0_cause;
+reg [31:0] cp0_epc;
+
+assign cp0_rdata = (cp0_addr == `STATUS_ADDR)? cp0_status:
+				   (cp0_addr == `CAUSE_ADDR)?  cp0_cause : cp0_epc;
+
 
 /****************************************status****************************************/
 /*
 |0		|bev|0		|IM7~IM0|0	|EXL|IE |
 |31:23	|22	|21:16	|15:8	|7:2|1	|0	|
 */
+
 wire 		cp0_status_bev;
 reg[7:0] 	cp0_status_im;
 reg 		cp0_status_exl;
@@ -60,7 +68,7 @@ begin
 	begin
 		cp0_status_exl <= 1'b1;
 	end
-	else if (eret_reflush)
+	else if (eret_flush)
 	begin
 		cp0_status_exl <= 1'b0;
 	end
@@ -126,14 +134,14 @@ begin
 		// reset
 		cp0_cause_ti <= 1'b0;	
 	end
-	else if (mtc0_we && cp0_addr == `COMPARE_ADDR) // WARNING: this is not `CAUSE_ADDR
+/*	else if (mtc0_we && cp0_addr == `COMPARE_ADDR) // WARNING: this is not `CAUSE_ADDR
 	begin
 		cp0_cause_ti <= 1'b0;
-	end
-	else if (count_eq_compare) 
+	end*/
+	/*else if (count_eq_compare) // 这几个条件暂时用不到，等实现时间中断的时候再用
 	begin
 		cp0_cause_ti <= 1'b1;
-	end
+	end*/
 end
 
 always @(posedge clk)	// IP7~IP2
@@ -178,8 +186,8 @@ end
 
 
 /****************************************epc****************************************/
-reg [31:0] cp0_epc;
-assign cp0_epc_wire = cp0_epc;
+
+//assign cp0_epc_wire = cp0_epc;
 
 always @(posedge clk) 
 begin

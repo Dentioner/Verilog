@@ -18,8 +18,10 @@ module exe_stage(
     output [31:0] data_sram_addr ,
     output [31:0] data_sram_wdata,
 
-    output [39:0]    back_to_id_stage_bus_from_exe  // ÓÃÓÚ×èÈû&Ç°µİ»úÖÆµÄ·´À¡ĞÅºÅ
-    //output [36:0]   exe_forwarding    
+    output [40:0]    back_to_id_stage_bus_from_exe,  // ç”¨äºé˜»å¡&å‰é€’æœºåˆ¶çš„åé¦ˆä¿¡å·
+    //output [36:0]   exe_forwarding
+    input  [`EXECEPTION_BUS_WD - 1:0] exception_bus,
+    input         mem_has_exception    
 );
 
 reg         es_valid      ;
@@ -55,6 +57,9 @@ wire        es_inst_mfhi  ;     // prj6 added
 wire        es_inst_mflo  ;     // prj6 added
 wire        es_inst_mthi  ;     // prj6 added
 wire        es_inst_mtlo  ;     // prj6 added
+wire        es_inst_mfc0  ;     // prj8 added
+wire        es_inst_mtc0  ;     // prj8 added
+wire        es_inst_eret  ;     // prj8 added
 
 wire [31:0] es_final_result;    // prj6 added
 
@@ -63,7 +68,16 @@ wire [15:0] es_imm        ;
 wire [31:0] es_rs_value   ;
 wire [31:0] es_rt_value   ;
 wire [31:0] es_pc         ;
-assign {es_s_ext       ,                //150:150
+
+wire        es_exception  ;     // prj8 added
+wire        es_in_slot    ;     // prj8 added
+
+assign {es_in_slot     ,                //155:155
+        es_exception   ,                //154:154
+        es_s_ext       ,                //153:153
+        es_inst_eret   ,                //152:152
+        es_inst_mfc0   ,                //151:151
+        es_inst_mtc0   ,                //150:150
         es_mem_left    ,                //149:149
         es_mem_right   ,                //148:148
         es_mem_w       ,                //147:147
@@ -93,7 +107,7 @@ assign {es_s_ext       ,                //150:150
         es_pc                           //31 :0
        } = ds_to_es_bus_r;
 
-wire [31:0] es_alu_src1   ;//aluµÄĞÅºÅ
+wire [31:0] es_alu_src1   ;//aluçš„ä¿¡å·
 wire [31:0] es_alu_src2   ;
 wire [31:0] es_alu_result ;
 
@@ -113,8 +127,19 @@ wire [31:0] wdata_lo;           // prj6 added
 
 wire div_finished;              // prj6 added
 
+wire        es_flush;           // prj8 added
+wire [31:0] es_ex_pc;           // prj8 added
+
+assign {es_flush, es_ex_pc} = exception_bus;
+
+
 assign es_res_from_mem = es_load_op;
-assign es_to_ms_bus = {es_s_ext       ,  //108:108 //ºÏ³É¸ømem½×¶ÎµÄ×ÜÏßĞÅºÅ
+assign es_to_ms_bus = {es_in_slot     ,  //113:113
+                       es_exception   ,  //112:112
+                       es_s_ext       ,  //111:111 //åˆæˆç»™memé˜¶æ®µçš„æ€»çº¿ä¿¡å·
+                       es_inst_eret   ,  //110:110
+                       es_inst_mfc0   ,  //109:109  
+                       es_inst_mtc0   ,  //108:108
                        es_mem_left    ,  //107:107
                        es_mem_right   ,  //106:106
                        es_mem_w       ,  //105:105
@@ -130,7 +155,8 @@ assign es_to_ms_bus = {es_s_ext       ,  //108:108 //ºÏ³É¸ømem½×¶ÎµÄ×ÜÏßĞÅºÅ
 
 
 
-assign back_to_id_stage_bus_from_exe = {es_load_op,         //39
+assign back_to_id_stage_bus_from_exe = {es_inst_mfc0,       //40
+                                        es_load_op,         //39
                                         es_final_result,    //38:7
                                         es_valid,           //6
                                         es_gr_we,           //5
@@ -143,10 +169,12 @@ assign exe_forwarding = {es_alu_result,     //36:5
 */
 
 //assign es_ready_go    = 1'b1;
-assign es_ready_go = (!es_div_en)? 1 : div_finished;
+assign es_ready_go = (es_flush)? 1 : 
+                     (!es_div_en)? 1 : div_finished;
 
 assign es_allowin     = !es_valid || es_ready_go && ms_allowin;
 assign es_to_ms_valid =  es_valid && es_ready_go;
+/*
 always @(posedge clk) begin
     if (reset) begin
         es_valid <= 1'b0;
@@ -155,6 +183,26 @@ always @(posedge clk) begin
         es_valid <= ds_to_es_valid;
     end
 
+    if (ds_to_es_valid && es_allowin) begin
+        ds_to_es_bus_r <= ds_to_es_bus;
+    end
+end
+*/
+
+always @(posedge clk) begin
+    if (reset) begin
+        es_valid <= 1'b0;
+    end
+    else if (es_flush) begin
+        es_valid <= 1'b0;
+    end
+    else if (es_allowin) begin
+        es_valid <= ds_to_es_valid;
+    end
+end
+
+
+always @(posedge clk) begin
     if (ds_to_es_valid && es_allowin) begin
         ds_to_es_bus_r <= ds_to_es_bus;
     end
@@ -179,7 +227,9 @@ assign es_addr_low_2 = es_alu_result[1:0];
 
 assign data_sram_en    = 1'b1;
 assign data_sram_wen_b = es_mem_we&&es_valid ? 1'b1 : 1'b0;
-assign data_sram_wen   = es_mem_left  ? (es_addr_low_2 == 2'b00 ? {3'b0, data_sram_wen_b} :
+assign data_sram_wen   = (mem_has_exception || es_flush)? 4'b0 : //å¦‚æœä¸‹å®¶å‘ç”Ÿäº†ä¾‹å¤–ï¼Œè¿™é‡Œå†™ä½¿èƒ½å¾—æ‰“ä½
+
+                         es_mem_left  ? (es_addr_low_2 == 2'b00 ? {3'b0, data_sram_wen_b} :
                                          es_addr_low_2 == 2'b01 ? {2'b0, {2{data_sram_wen_b}}} :
                                          es_addr_low_2 == 2'b10 ? {1'b0, {3{data_sram_wen_b}}} :
                                                                   {4{data_sram_wen_b}}
@@ -214,23 +264,26 @@ assign data_sram_wdata = es_mem_left  ? (es_addr_low_2 == 2'b00 ? {24'b0, es_rt_
                          es_mem_h     ? {2{es_rt_value[15:0]}} :
                                         es_rt_value;
 
-//8ÌõÌØÊâÖ¸ÁîµÄ¿ØÖÆĞÅºÅÔÚÕâÀïÉú³É
-assign es_hi_we    = es_inst_mult | es_inst_multu | es_inst_mthi | div_finished;
-assign es_lo_we    = es_inst_mult | es_inst_multu | es_inst_mtlo | div_finished;
+//8æ¡ç‰¹æ®ŠæŒ‡ä»¤çš„æ§åˆ¶ä¿¡å·åœ¨è¿™é‡Œç”Ÿæˆ
+assign es_hi_we    = (mem_has_exception || es_flush)? 0 : 
+                      es_inst_mult | es_inst_multu | es_inst_mthi | div_finished;
+assign es_lo_we    = (mem_has_exception || es_flush)? 0 :
+                      es_inst_mult | es_inst_multu | es_inst_mtlo | div_finished;
 assign es_div_en   = es_inst_div  | es_inst_divu;
 
 
 
 assign wdata_hi = (es_inst_mthi) ? es_rs_value :
                   (es_inst_mult | es_inst_multu) ? mult_result_hi : 
-                  (es_inst_div  | es_inst_divu)  ? div_result_hi : hi; // ÕâÀïÈ±Ê¡Ìõ¼şÓ¦¸Ã²»ÊÇ×éºÏ»·£¿ÒòÎªhiÎª¼Ä´æÆ÷£¬ÓÃµÄÊÇ·Ç×èÈû¸³Öµ 
+                  (es_inst_div  | es_inst_divu)  ? div_result_hi : hi; // è¿™é‡Œç¼ºçœæ¡ä»¶åº”è¯¥ä¸æ˜¯ç»„åˆç¯ï¼Ÿå› ä¸ºhiä¸ºå¯„å­˜å™¨ï¼Œç”¨çš„æ˜¯éé˜»å¡èµ‹å€¼ 
 
 assign wdata_lo = (es_inst_mtlo) ? es_rs_value :
                   (es_inst_mult | es_inst_multu) ? mult_result_lo : 
-                  (es_inst_div  | es_inst_divu)  ? div_result_lo : lo; // ÕâÀïÈ±Ê¡Ìõ¼şÓ¦¸Ã²»ÊÇ×éºÏ»·£¿ÒòÎªhiÎª¼Ä´æÆ÷£¬ÓÃµÄÊÇ·Ç×èÈû¸³Öµ 
+                  (es_inst_div  | es_inst_divu)  ? div_result_lo : lo; // è¿™é‡Œç¼ºçœæ¡ä»¶åº”è¯¥ä¸æ˜¯ç»„åˆç¯ï¼Ÿå› ä¸ºhiä¸ºå¯„å­˜å™¨ï¼Œç”¨çš„æ˜¯éé˜»å¡èµ‹å€¼ 
 
 assign es_final_result = (es_inst_mfhi)? hi :
-                         (es_inst_mflo)? lo : es_alu_result;
+                         (es_inst_mflo)? lo : 
+                         (es_inst_mfc0 || es_inst_mtc0)?{16'b0, es_imm}: es_alu_result;
 
 mutiplier m1(
     .mult1(es_alu_src1),

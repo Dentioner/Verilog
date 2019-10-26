@@ -38,11 +38,13 @@ wire [`WS_TO_RF_BUS_WD -1:0] ws_to_rf_bus;//38  bit
 wire [`BR_BUS_WD       -1:0] br_bus;      //32  bit
 
 //×èÈû&Ç°µÝ
-wire [39:0] back_to_id_stage_bus_from_exe;
-wire [38:0] back_to_id_stage_bus_from_mem;
+wire [40:0] back_to_id_stage_bus_from_exe;
+wire [39:0] back_to_id_stage_bus_from_mem;
 wire [36:0] back_to_mem_stage_bus_from_wb;
 
-
+//Òì³£
+wire [`EXECEPTION_BUS_WD -1:0] exception_bus;
+wire                           mem_has_exception;
 // IF stage
 if_stage if_stage(
     .clk            (clk            ),
@@ -59,7 +61,8 @@ if_stage if_stage(
     .inst_sram_wen  (inst_sram_wen  ),
     .inst_sram_addr (inst_sram_addr ),
     .inst_sram_wdata(inst_sram_wdata),
-    .inst_sram_rdata(inst_sram_rdata)
+    .inst_sram_rdata(inst_sram_rdata),
+    .exception_bus(exception_bus)
 );
 // ID stage
 id_stage id_stage(
@@ -80,7 +83,8 @@ id_stage id_stage(
     .ws_to_rf_bus   (ws_to_rf_bus   ),
 
     .back_to_id_stage_bus_from_exe(back_to_id_stage_bus_from_exe),
-    .back_to_id_stage_bus_from_mem(back_to_id_stage_bus_from_mem)
+    .back_to_id_stage_bus_from_mem(back_to_id_stage_bus_from_mem),
+    .exception_bus(exception_bus)
 );
 // EXE stage
 exe_stage exe_stage(
@@ -101,7 +105,9 @@ exe_stage exe_stage(
     .data_sram_addr (data_sram_addr ),
     .data_sram_wdata(data_sram_wdata),
 
-    .back_to_id_stage_bus_from_exe(back_to_id_stage_bus_from_exe)
+    .back_to_id_stage_bus_from_exe(back_to_id_stage_bus_from_exe),
+    .exception_bus(exception_bus),
+    .mem_has_exception(mem_has_exception)
 );
 // MEM stage
 mem_stage mem_stage(
@@ -120,7 +126,9 @@ mem_stage mem_stage(
     .data_sram_rdata(data_sram_rdata),
 
     .back_to_mem_stage_bus_from_wb(back_to_mem_stage_bus_from_wb),
-    .back_to_id_stage_bus_from_mem(back_to_id_stage_bus_from_mem)
+    .back_to_id_stage_bus_from_mem(back_to_id_stage_bus_from_mem),
+    .exception_bus(exception_bus),
+    .mem_has_exception(mem_has_exception)
 );
 // WB stage
 wb_stage wb_stage(
@@ -138,7 +146,8 @@ wb_stage wb_stage(
     .debug_wb_pc      (debug_wb_pc      ),
     .debug_wb_rf_wen  (debug_wb_rf_wen  ),
     .debug_wb_rf_wnum (debug_wb_rf_wnum ),
-    .debug_wb_rf_wdata(debug_wb_rf_wdata)
+    .debug_wb_rf_wdata(debug_wb_rf_wdata),
+    .exception_bus(exception_bus)
 );
 
 endmodule

@@ -15,8 +15,11 @@ module mem_stage(
     //from data-sram
     input  [31                 :0] data_sram_rdata,
     input  [36:0]    back_to_mem_stage_bus_from_wb,
-    output [38:0]    back_to_id_stage_bus_from_mem
+    output [39:0]    back_to_id_stage_bus_from_mem,
     //output [36:0]   mem_forwarding
+    input  [`EXECEPTION_BUS_WD - 1:0] exception_bus,
+    output           mem_has_exception // 此信号用于给EXE级监听是否在MEM产生例外以免HI/LO/Store指令产生了错误的值
+
 );
 
 reg         ms_valid;
@@ -40,7 +43,26 @@ wire [ 4:0] ms_dest;
 wire [31:0] ms_alu_result;
 wire [31:0] ms_rt_value;
 wire [31:0] ms_pc;
-assign {ms_s_ext       ,  //108:108 //合成给mem阶段的总线信号
+
+wire        ms_inst_mfc0;
+wire        ms_inst_mtc0;
+wire        ms_inst_eret;
+wire [7:0]  ms_cp0_addr;
+
+wire        ms_flush;
+wire [31:0] ms_ex_pc;
+assign {ms_flush, ms_ex_pc} = exception_bus;
+
+
+wire        ms_in_slot;     // prj8 added
+wire        ms_exception;   // prj8 added
+    
+assign {ms_in_slot     ,  //113:113
+        ms_exception   ,  //112:112
+        ms_s_ext       ,  //111:111 //合成给mem阶段的总线信号
+        ms_inst_eret   ,  //110:110
+        ms_inst_mfc0   ,  //109:109
+        ms_inst_mtc0   ,  //108:108
         ms_mem_left    ,  //107:107
         ms_mem_right   ,  //106:106
         ms_mem_w       ,  //105:105
@@ -60,7 +82,13 @@ assign rt_final_result = (ms_dest == ws_dest_r) ? ws_final_result_r :
 wire [31:0] mem_result;
 wire [31:0] ms_final_result;
 
-assign ms_to_ws_bus = {ms_gr_we       ,  //69:69
+assign ms_to_ws_bus = {ms_in_slot     ,  //82:82
+                       ms_exception   ,  //81:81
+                       ms_cp0_addr    ,  //80:73
+                       ms_inst_eret   ,  //72:72
+                       ms_inst_mfc0   ,  //71:71
+                       ms_inst_mtc0   ,  //70:70
+                       ms_gr_we       ,  //69:69
                        ms_dest        ,  //68:64
                        ms_final_result,  //63:32
                        ms_pc             //31:0
@@ -70,6 +98,7 @@ assign ms_addr_low_2 = ms_alu_result[1:0];
 assign ms_ready_go    = 1'b1;
 assign ms_allowin     = !ms_valid || ms_ready_go && ws_allowin;
 assign ms_to_ws_valid = ms_valid && ms_ready_go;
+/*
 always @(posedge clk) begin
     if (reset) begin
         ms_valid <= 1'b0;
@@ -79,9 +108,29 @@ always @(posedge clk) begin
     end
 
     if (es_to_ms_valid && ms_allowin) begin
-        es_to_ms_bus_r  <= es_to_ms_bus; //bug？？？阻塞赋值？？
+        es_to_ms_bus_r  <= es_to_ms_bus; 
     end
 end
+*/
+always @(posedge clk) begin
+    if (reset) begin
+        ms_valid <= 1'b0;
+    end
+    else if(ms_flush) begin
+        ms_valid <= 1'b0;
+    end
+    else if (ms_allowin) begin
+        ms_valid <= es_to_ms_valid;
+    end
+end
+
+always @(posedge clk) begin
+    if (es_to_ms_valid && ms_allowin) begin
+        es_to_ms_bus_r  <= es_to_ms_bus; 
+    end
+end
+
+
 
 //assign mem_result = data_sram_rdata;
 
@@ -105,11 +154,12 @@ assign mem_result = ms_mem_left  ? (ms_addr_low_2 == 2'b00 ? {data_sram_rdata[ 7
                                    ) :
                                    data_sram_rdata;
 
-assign ms_final_result = ms_res_from_mem ? mem_result //判断写回的数据到底是从mem里面来的，还是alu算出来的
-                                         : ms_alu_result;//res的意思应该就是result
+assign ms_final_result = ms_res_from_mem ? mem_result  : 
+                        (ms_inst_mtc0)   ? ms_rt_value : ms_alu_result;
 
 
-assign back_to_id_stage_bus_from_mem = {ms_final_result,    //38:7
+assign back_to_id_stage_bus_from_mem = {ms_inst_mfc0,       //39
+                                        ms_final_result,    //38:7
                                         ms_valid,           //6
                                         ms_gr_we,           //5
                                         ms_dest             //4:0
@@ -121,5 +171,9 @@ assign mem_forwarding = {ms_final_result,   //36:5
                          ms_dest            //4:0
                         };
 */
+
+assign ms_cp0_addr = ms_alu_result[7:0];
+
+assign mem_has_exception = ms_exception & ms_valid;
 
 endmodule 
