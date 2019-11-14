@@ -28,24 +28,21 @@ module cpu_axi_interface(
     //ar
     output reg [ 3:0] arid      ,
     output reg [31:0] araddr    ,
-    //output     [31:0] araddr    ,// test!!!!!!!!!!!!!!!!
     output     [ 7:0] arlen     ,
     output reg [ 2:0] arsize    ,
     output     [ 1:0] arburst   ,
     output     [ 1:0] arlock    ,
     output     [ 3:0] arcache   ,
     output     [ 2:0] arprot    ,
-    //output reg    arvalid   ,
-    output        arvalid   , // test!!!!!!!!!!!!!!!!
-    input         arready   ,
+    output            arvalid   , 
+    input             arready   ,
     //r        
     input  [ 3:0] rid       , // 这个信号不知道在prj10里面能干啥
     input  [31:0] rdata     ,
     input  [ 1:0] rresp     ,
     input         rlast     ,
     input         rvalid    ,
-    //output reg    rready    ,
-    output        rready    ,   // test!!!!!!!!!!!!!!!!
+    output        rready    ,
     
 
     //aw       
@@ -57,47 +54,40 @@ module cpu_axi_interface(
     output     [ 1:0] awlock    ,
     output     [ 3:0] awcache   ,
     output     [ 2:0] awprot    ,
-    //output reg        awvalid   ,
-    output            awvalid   , // test!!!!!!!!!!!!!!!!!!!!!
+    output            awvalid   ,
     input             awready   ,
     //w        
     output     [ 3:0] wid       ,
     output reg [31:0] wdata     ,
     output reg [ 3:0] wstrb     ,
     output            wlast     ,
-    //output reg        wvalid    ,
-    output            wvalid , // test!!!!!!!!!!!!!!!!!!!!!!!!!!
-    input         wready    ,
+    output            wvalid    ,
+    input             wready    ,
     //b        
     input     [ 3:0] bid       , // 这个信号好像在prj10里面没用到
     input     [ 1:0] bresp     ,
-    input            bvalid    ,
-    //output reg       bready    
-    output           bready     // test
-
-
+    input            bvalid    ,  
+    output           bready
     );
 
-
+// 此处状态未考虑burst传输......
 localparam AR_not_finish = 2'b00;
 localparam AR_finish   = 2'b01;
 localparam AR_init  = 2'b10;
 
 localparam R_not_finish  = 2'b00;
 localparam R_finish    = 2'b01;
-localparam R_finished   = 2'b10;
 
 localparam AW_not_finish = 2'b00;
 localparam AW_finish   = 2'b01;
-//localparam AW_finished  = 2'b10;
+
 
 localparam W_not_finish  = 2'b10;
 localparam W_finish    = 2'b11;
-//localparam W_finished   = 2'b10;
+
 
 localparam B_not_start  = 2'b00;
 localparam B_working    = 2'b01;
-localparam B_finished   = 2'b10;
 
 reg read_transaction;   //读事务
 reg write_transaction;  //写事务
@@ -118,25 +108,16 @@ wire w_handshake;
 wire b_handshake;
 
 
-// 给axi-slave的数据
-wire [31:0] address;
-wire [31:0] data_in;
-
-//wire awvalid_wire;
-//wire arvalid_wire;
-//wire wvalid_wire ;
-
 //下面几个状态机的状态
 reg [1:0] state_ar;
 reg [1:0] state_r;
 reg [1:0] state_aw_w;
 reg [1:0] state_b;
 
+// 由于目前没出现例外，这俩寄存器暂时没用到，仅为例外处理机制预留......
 reg [31:0] rdata_buffer;
 reg [31:0] araddr_buffer;
 
-
-wire xxxx_data_ok;
 
 wire [ 3:0] wstrb_wire_all;
 wire [ 3:0] wstrb_wire_zero;
@@ -146,7 +127,6 @@ wire [ 3:0] wstrb_wire_two;
 reg inst_req_reg;
 reg data_req_reg;
 
-//assign ar_handshake = (inst_req & inst_addr_ok) | (data_req & data_addr_ok);
 assign ar_handshake = arvalid & arready;
 assign r_handshake  = rvalid  & rready;
 assign aw_handshake = awvalid & awready;
@@ -160,9 +140,7 @@ assign arlock   = 0;
 assign arcache  = 0;
 assign arprot   = 0;
 
-//assign awid     = 4'b0001;
-assign awid = 0; //test!!!!!!!!!!!!!!!!!!!!
-
+assign awid     = 4'b0001;
 assign awlen    = 0;
 assign awburst  = 2'b01;
 assign awlock   = 0;
@@ -172,34 +150,7 @@ assign awprot   = 0;
 assign wid      = 4'b0001;
 assign wlast    = 1'b1;
 
-/*
-// 以下assign对应P169的2.2章节所指示的表达逻辑
-assign arvalid_wire = //(~resetn)? 0 : // 此行的逻辑见讲义P171
-                    (inst_req == 1 && inst_wr == 0)? 1 :
-                    (data_req == 1 && data_wr == 0)? 1 : 0;
 
-assign awvalid_wire = //(~resetn)? 0 : // 此行的逻辑见讲义P171
-                    (inst_req == 1 && inst_wr == 1)? 1 :
-                    (data_req == 1 && data_wr == 1)? 1 : 0;
-
-assign wvalid_wire  = awvalid;
-
-//rvalid和bvalid是input，不归这个模块管
-*/
-
-//assign inst_addr_ok = (read_transaction)?arready : 
-//                      (write_transaction)?AXI 上的awready 和wready 都已经或正在为1 : 0;
-/*
-assign inst_addr_ok = (!inst_req)? 0 :
-                      (read_transaction)?arready : 
-                      (write_transaction)? ( awready | wready ) : 0; // 不知道到底怎样才算是ready信号“正在成为1”
-
-
-
-assign data_addr_ok = (!data_req)? 0 : 
-                      (read_transaction)?arready : 
-                      (write_transaction)?(awready | wready): 0; // 不知道到底怎样才算是ready信号“正在成为1”
-*/
 
 assign inst_addr_ok = (read_transaction)?  0 :
                       (write_transaction)? 0 :
@@ -219,51 +170,10 @@ assign data_data_ok = (!data_req_reg)? 0 :
                       (read_transaction)?r_handshake :
                       (write_transaction)?b_handshake : 0;
 
-
-/*
-assign inst_data_ok = (!inst_req)? 0 : xxxx_data_ok;
-
-assign data_data_ok = (!data_req)? 0 : xxxx_data_ok;
-
-assign xxxx_data_ok = (read_transaction)?(state_r == R_finish) :
-                      (write_transaction)?(state_b == B_not_start) : 0;
-*/
-
-//????????????上面这俩信号没得区分？
-
-/*assign inst_addr = (!inst_req)? 0 :
-                   (read_transaction)?araddr :
-                   (write_transaction)?awaddr : 0;
-
-assign data_addr = (!data_req)? 0 :
-                   (read_transaction)?araddr :
-                   (write_transaction)?awaddr : 0;*/
-//????????????上面这俩信号没得区分？
-
-/*assign inst_size = (!inst_req)? 0 :
-                   (read_transaction)?arsize : 
-                   (write_transaction)?awsize : 0;
-
-assign data_size = (!data_req)? 0 :
-                   (read_transaction)?arsize : 
-                   (write_transaction)?awsize : 0;   */              
-//????????????上面这俩信号没得区分？
-
-//assign inst_rdata = (r_handshake & inst_req)? rdata_buffer : 0;
-//assign data_rdata = (r_handshake & data_req)? rdata_buffer : 0;
-
-
 //assign inst_rdata = (inst_req)? rdata_buffer : 0;
 //assign data_rdata = (data_req)? rdata_buffer : 0;
 assign inst_rdata = (inst_req_reg)? rdata : 0;
 assign data_rdata = (data_req_reg)? rdata : 0;
-
-
-
-/*
-assign inst_wstrb = (inst_req) ? wstrb : 0;
-assign data_wstrb = (data_req) ? wstrb : 0;*/
-//这些信号都怎么区分？？？？
 
 
     
@@ -319,7 +229,7 @@ begin
         // reset
         inst_req_reg <= 1'b0;    
     end
-    else if (sram_inst_read_handshake) 
+    /*else if (sram_inst_read_handshake) 
     begin
         inst_req_reg <= inst_req;
     end
@@ -332,7 +242,13 @@ begin
     else if (r_handshake | b_handshake)
     begin
         inst_req_reg <= 1'b0;
+    end*/
+
+    else if (sram_data_read_handshake | sram_data_write_handshake | sram_inst_read_handshake | sram_inst_write_handshake) 
+    begin
+        inst_req_reg <= inst_req;
     end
+
 end
 
 always @(posedge clk) 
@@ -342,7 +258,7 @@ begin
         // reset
         data_req_reg <= 1'b0;    
     end
-    else if (sram_data_read_handshake) 
+    /*else if (sram_data_read_handshake) 
     begin
         data_req_reg <= data_req;
     end
@@ -355,50 +271,18 @@ begin
     else if (r_handshake | b_handshake)
     begin
         data_req_reg <= 1'b0;
+    end*/
+
+    else if (sram_data_read_handshake | sram_data_write_handshake | sram_inst_read_handshake | sram_inst_write_handshake) 
+    begin
+        data_req_reg <= data_req;
     end
 end
 
 
-
-assign address = (data_req & data_addr_ok)? data_addr :
-                 (inst_req & inst_addr_ok)? inst_addr : 0;
-
-assign data_in = (data_req)? data_wdata :
-                 (inst_req)? inst_wdata : 0;
-
-//test
-/*
-assign address = (inst_req)? inst_addr :
-                 (data_req)? data_addr : 0;
-
-assign data_in = (inst_req)? inst_wdata :
-                 (data_req)? data_wdata : 0;
-*/
 /****************************************axi-ar****************************************/
 //状态机
-/*
-always @(posedge clk) 
-begin
-    if (~resetn) 
-    begin
-        // reset
-        state_ar <= AR_init;
-    end
-    else if (read_signal && (!ar_handshake) && (state_ar != AR_finish)) // 检测到读事务，或者检测到slave传递过来的arready 
-    begin
-        state_ar <= AR_finish;
-    end
-    else if (arready && (state_ar != AR_finish)) 
-    begin
-        state_ar <= AR_finish;
-    end
-    else if (ar_handshake && (state_ar == AR_finish)) // 如果握手，那么下一拍就完成了
-    begin
-        //state_ar <= AR_finished;
-        state_ar <= AR_not_finish;
-    end
-end
-*/
+
 always @(posedge clk) 
 begin
     if (~resetn) begin
@@ -406,12 +290,11 @@ begin
         state_ar <= AR_init;
     end
 
-    else if (ar_handshake)// && (state_ar != AR_finish)) 
+    else if (ar_handshake)
     begin
         state_ar <= AR_finish;
     end
 
-    //else if (state_ar == AR_finish)
     else if (r_handshake)
     begin
         state_ar <= AR_not_finish; 
@@ -419,90 +302,18 @@ begin
 end
 
 
-
 // arvalid
-
-assign arvalid = (state_ar != AR_finish) && read_transaction;
-
-
-/*
-always @(posedge clk)   
-begin
-    if (~resetn) 
-    begin
-        // reset
-        arvalid <= 1'b0;
-    end
-    else if ((araddr == awaddr) && wvalid) //阻塞 
-    begin
-        arvalid <= 1'b0;
-    end
-    
-    
-    else if (read_signal && (!ar_handshake) && (!r_handshake))
-    begin
-        arvalid <= 1'b1;
-    end
-    
-
-
-
-
-    else if (ar_handshake) 
-    begin
-        arvalid <= 1'b0;
-    end
-
-
-
-
-end
-
-*/
-/*
-    else if (sram_data_read_handshake && (!ar_handshake))
-    begin
-        arvalid <= 1'b1;
-    end
-
-    else if (sram_inst_read_handshake && (!ar_handshake)) 
-    begin
-        arvalid <= 1'b1;
-    end
-*/
-
-/*
-    else if (read_signal && (!r_handshake))
-    begin
-        arvalid <= 1'b0;
-    end
-*/
+assign arvalid =    ((araddr == awaddr) && read_transaction && write_transaction) ? 0 : // 简易阻塞机制：同时出现读写事务且读写地址相同时，阻塞
+                    (state_ar != AR_finish) && read_transaction;
 
 
 // araddr
 always @(posedge clk) 
 begin
     if (~resetn) begin
-        // reset
-        //araddr_buffer <= 32'hxxxxxxxx;//test
-        araddr <= 32'hxxxxxxxx;//test
+        araddr <= 0;
     end
-    /*else if (read_signal && (!ar_handshake) && (state_ar == AR_not_finish)) // buffer应该与状态机的变化保持一致 
-    begin
-        araddr <= address;
-    end
-
-    else if (arready && (state_ar == AR_not_finish)) // buffer应该与状态机的变化保持一致 
-    begin
-        araddr <= address;
-    end*/
-
-    /*else if (read_signal) 
-    begin
-        //araddr_buffer <= address;
-        araddr <= address;    
-    end*/
-
+    
     else if (sram_data_read_handshake) 
     begin
         araddr <= data_addr;
@@ -513,8 +324,6 @@ begin
         araddr <= inst_addr;
     end
 end
-
-//assign araddr = address;
 
 // arid
 always @(posedge clk)   
@@ -527,8 +336,7 @@ begin
 
     else if (sram_data_read_handshake) 
     begin
-        //arid <= 4'b0001;    
-        arid <= 0; //test!!!!!!!!!!!!!!!
+        arid <= 4'b0001;    
     end
 
     else if (sram_inst_read_handshake) 
@@ -560,7 +368,6 @@ end
 /****************************************axi-r****************************************/
 //axi-r的状态机
 
-/*
 always @(posedge clk) 
 begin
     if (~resetn) 
@@ -568,92 +375,31 @@ begin
         // reset
         state_r <= R_not_finish;
     end
-    else if (state_ar == AR_not_finish && read_transaction && state_r == R_not_finish)  // 检测到rready即将上升
-    begin
-        state_r <= R_finish;
-    end
-
-    else if (rvalid && (state_r == R_not_finish)) // 检测到rvalid
-    begin
-        state_r <= R_finish;
-    end
-    // 为cache预留的......
-    else if (r_handshake && (state_r == R_finish) && (!rlast)) //非最后一次传输
-    begin 
-        state_r <= R_not_finish;
-    end
-    else if (r_handshake && (state_r == R_finish) && rlast) //最后一次传输
-    begin
-        state_r <= R_finished;
-    end
-    else if (state_r == R_finished) 
-    begin
-        state_r <= R_not_finish;
-    end 
-end
-*/
-
-
-always @(posedge clk) 
-begin
-    if (~resetn) 
-    begin
-        // reset
-        state_r <= R_not_finish;
-    end
-    //else if (state_ar == AR_not_finish && read_transaction && state_r == R_not_finish)  // 检测到rready即将上升
+    
     else if (r_handshake)
     begin
         state_r <= R_finish;
     end
-/*
-    else if (rvalid && (state_r == R_not_finish)) // 检测到rvalid
-    begin
-        state_r <= R_finish;
-    end
-    // 为cache预留的......
-    else if (r_handshake && (state_r == R_finish)) 
-    begin 
-        state_r <= R_not_finish;
-    end
-*/
+
     else if (ar_handshake) 
     begin
         state_r <= R_not_finish;
     end
 
+    // 为cache的burst传输预留
+    // 目前未使用到last信号......
+    
+
 end
 
 
 // rready
-/*
-always @(posedge clk)   
-begin
-    if (~resetn) 
-    begin
-        // reset
-        rready <= 1'b0;
-    end
-    //else if (rvalid & read_transaction)
-    //else if (state_ar == AR_not_finish && read_transaction)
-    else if (ar_handshake && read_transaction)
-    begin
-        rready <= 1'b1;
-    end
-
-
-    else if (r_handshake) 
-    begin
-        rready <= 1'b0;
-    end
-
-end
-*/
 
 assign rready = (state_ar == AR_finish) && read_transaction;
 
 
 // rdata_buffer
+// 为例外机制暂留的，目前仿真测试也查不了这个地方的bug......
 always @(posedge clk) 
 begin
     if (~resetn) 
@@ -670,21 +416,7 @@ begin
     begin
         rdata_buffer <= rdata;
     end
-    // 为cache预留的......
-    /*
-    else if (r_handshake && (state_r == R_finish) && (!rlast)) //非最后一次传输
-    begin 
-        state_r <= R_not_finish;
-    end
-    else if (r_handshake && (state_r == R_finish) && rlast) //最后一次传输
-    begin
-        state_r <= R_finished;
-    end
-    else if (state_r == R_finished) 
-    begin
-        state_r <= R_not_finish;
-    end 
-    */
+
 end
 
 
@@ -697,22 +429,7 @@ begin
         // reset
         state_aw_w <= AW_not_finish;    
     end
-    /*
-    else if ((state_aw_w == AW_not_finish) && write_signal && (!aw_handshake)) // 检测到awvalid
-    begin
-        state_aw_w <= AW_finish;
-    end
-
-    else if ((state_aw_w == AW_not_finish) && awready) // 检测到awready 
-    begin
-        state_aw_w <= AW_finish;
-    end
-
-    else if ((state_aw_w == AW_finish) && aw_handshake) // 由于共用一个状态机，那么这时候进入w状态
-    begin
-        state_aw_w <= W_finish;
-    end
-    */
+    
     else if (aw_handshake)
     begin
         state_aw_w <= AW_finish;
@@ -726,58 +443,11 @@ begin
     else if (b_handshake)
     begin
         state_aw_w <= AW_not_finish;
-    end
-    /*
-    else if ((state_aw_w == W_finish) && w_handshake && (!wlast))
-    begin
-        state_aw_w <= W_not_finish;
-    end
-
-    else if ((state_aw_w == W_finish) && w_handshake && wlast)
-    begin
-        state_aw_w <= W_finished;
-    end
-
-    else if (state_aw_w == W_finished)
-    begin
-        state_aw_w <= W_not_finish;
-    end
-
-    else if ((state_aw_w == W_not_finish) && write_transaction) // 检测到wready即将上升
-    begin
-        state_aw_w <= W_finish;
-    end
-
-    else if ((state_aw_w == W_not_finish) && wvalid) // 检测到了wvalid
-    begin
-        state_aw_w <= W_finish;
-    end*/
-
-
-
+    end    
 end
 
 //awvalid
-/*
-always @(posedge clk)  
-begin
-    if (~resetn) 
-    begin
-        // reset
-        awvalid <= 1'b0;
-    end
-    else if (write_signal && (!aw_handshake) && (!w_handshake)) 
-    begin
-        awvalid <= 1'b1;
-    end
-
-    else if (aw_handshake) 
-    begin
-        awvalid <= 1'b0;    
-    end
-end
-*/
-assign awvalid = write_transaction && (state_aw_w != AW_finish) && (state_aw_w != W_finish);// && (state_b == B_not_start);
+assign awvalid = write_transaction && (state_aw_w != AW_finish) && (state_aw_w != W_finish);
 
 // awaddr
 always @(posedge clk) 
@@ -785,20 +455,9 @@ begin
     if (~resetn) 
     begin
         // reset
-        //awaddr <= 0;    
-       awaddr <= 32'hxxxxxxxx; //test
-    end
-/*    
-    else if ((state_aw_w == AW_not_finish) && write_signal && (!aw_handshake)) // 检测到awvalid
-    begin
-        awaddr <= address;
+       awaddr <= 0;
     end
 
-    else if ((state_aw_w == AW_not_finish) && awready) // 检测到awready 
-    begin
-        awaddr <= address;
-    end
-*/
     else if (sram_data_write_handshake) 
     begin
         awaddr <= data_addr;
@@ -830,30 +489,10 @@ begin
     end
 end
 
-
-/*
-always @(posedge clk)   // wvalid 
-begin
-    if (~resetn) 
-    begin
-        // reset
-        wvalid <= 1'b0;   
-    end
-    //else if (aw_handshake) // 检测到aw握手 
-    else if (write_signal && aw_handshake && (!w_handshake))
-    begin
-        wvalid <= 1'b1;
-    end
-
-    else if (w_handshake) 
-    begin
-        wvalid <= 1'b0;    
-    end
-end
-*/
+// wvalid
 
 assign wvalid = write_transaction && (state_aw_w != W_finish);
-//assign wvalid = write_transaction && (state_aw_w == W_not_finish);
+
 
 //wdata
 always @(posedge clk) 
@@ -863,23 +502,7 @@ begin
         // reset
         wdata <= 0;    
     end
-    /*
-    else if ((state_aw_w == AW_finish) && aw_handshake) // 由于共用一个状态机，那么这时候进入w状态 
-    begin
-        wdata <= data_in;
-    end
-
-    else if ((state_aw_w == W_not_finish) && write_transaction) // 检测到wready即将上升
-    begin
-        wdata <= data_in;
-    end
-
-    else if ((state_aw_w == W_not_finish) && wvalid) // 检测到了wvalid
-    begin
-        wdata <= data_in;
-    end
-    */
-
+    
     else if (sram_data_write_handshake)
     begin
         wdata <= data_wdata;
@@ -943,29 +566,7 @@ begin
     end
 end
 
-
-/*
-always @(posedge clk)   // bready
-begin
-    if (~resetn) 
-    begin
-        // reset
-        bready <= 1'b0;    
-    end
-    //else if (w_handshake && wlast) // 检测到w结束了  
-    else if (w_handshake && write_transaction) // 检测到w结束了  
-    begin
-        bready <= 1'b1;
-    end
-
-    else if(b_handshake)
-    begin
-        bready <= 1'b0; 
-    end
-end
-*/
-
-//assign bready = write_transaction && (state_aw_w == AW_finish);
+// bready
 assign bready = write_transaction && (state_aw_w != AW_not_finish);
 
 endmodule
