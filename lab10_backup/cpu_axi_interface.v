@@ -71,18 +71,18 @@ module cpu_axi_interface(
     );
 
 // 此处状态未考虑burst传输......
-localparam AR_not_finish = 2'b00;
+localparam AR_idle = 2'b00;
 localparam AR_finish   = 2'b01;
 localparam AR_init  = 2'b10;
 
-localparam R_not_finish  = 2'b00;
+localparam R_idle  = 2'b00;
 localparam R_finish    = 2'b01;
 
-localparam AW_not_finish = 2'b00;
+localparam AW_idle = 2'b00;
 localparam AW_finish   = 2'b01;
 
-
-localparam W_not_finish  = 2'b10;
+localparam AW_W_WORKING = 2'b10;
+//localparam W_idle  = 2'b10;
 localparam W_finish    = 2'b11;
 
 
@@ -126,6 +126,10 @@ wire [ 3:0] wstrb_wire_two;
 
 reg inst_req_reg;
 reg data_req_reg;
+
+
+reg aw_has_handshaked;  //表示aw信号已经握手
+reg w_has_handshaked;   //表示w信号已经握手  
 
 assign ar_handshake = arvalid & arready;
 assign r_handshake  = rvalid  & rready;
@@ -297,7 +301,7 @@ begin
 
     else if (r_handshake)
     begin
-        state_ar <= AR_not_finish; 
+        state_ar <= AR_idle; 
     end
 end
 
@@ -373,7 +377,7 @@ begin
     if (~resetn) 
     begin
         // reset
-        state_r <= R_not_finish;
+        state_r <= R_idle;
     end
     
     else if (r_handshake)
@@ -383,7 +387,7 @@ begin
 
     else if (ar_handshake) 
     begin
-        state_r <= R_not_finish;
+        state_r <= R_idle;
     end
 
     // 为cache的burst传输预留
@@ -407,12 +411,12 @@ begin
         // reset
         rdata_buffer <= 0;
     end
-    else if (state_ar == AR_not_finish && read_transaction && state_r == R_not_finish)  // 检测到rready即将上升
+    else if (state_ar == AR_idle && read_transaction && state_r == R_idle)  // 检测到rready即将上升
     begin
         rdata_buffer <= rdata;
     end
 
-    else if (rvalid && (state_r == R_not_finish)) // 检测到rvalid
+    else if (rvalid && (state_r == R_idle)) // 检测到rvalid
     begin
         rdata_buffer <= rdata;
     end
@@ -427,10 +431,12 @@ begin
     if (~resetn) 
     begin
         // reset
-        state_aw_w <= AW_not_finish;    
+        state_aw_w <= AW_idle;
+        aw_has_handshaked <= 1'b0;
+        w_has_handshaked <= 1'b0;    
     end
     
-    else if (aw_handshake)
+    /*else if (aw_handshake)
     begin
         state_aw_w <= AW_finish;
     end
@@ -438,16 +444,32 @@ begin
     else if (w_handshake)
     begin
         state_aw_w <= W_finish;
+    end*/
+
+    else if (aw_handshake | w_handshake)
+    begin
+        state_aw_w <= AW_W_WORKING;
+        if (aw_handshake) 
+        begin
+           aw_has_handshaked <= 1'b1; 
+        end
+
+        if (w_handshake)
+        begin
+            w_has_handshaked <= 1'b1;
+        end
     end
 
     else if (b_handshake)
     begin
-        state_aw_w <= AW_not_finish;
+        state_aw_w <= AW_idle;
+        aw_has_handshaked <= 1'b0;
+        w_has_handshaked <= 1'b0;
     end    
 end
 
 //awvalid
-assign awvalid = write_transaction && (state_aw_w != AW_finish) && (state_aw_w != W_finish);
+assign awvalid = write_transaction && (aw_has_handshaked != 1'b1); //(state_aw_w != AW_finish) && (state_aw_w != W_finish);
 
 // awaddr
 always @(posedge clk) 
@@ -491,7 +513,7 @@ end
 
 // wvalid
 
-assign wvalid = write_transaction && (state_aw_w != W_finish);
+assign wvalid = write_transaction && (w_has_handshaked != 1);//(state_aw_w != W_finish);
 
 
 //wdata
@@ -567,7 +589,7 @@ begin
 end
 
 // bready
-assign bready = write_transaction && (state_aw_w != AW_not_finish);
+assign bready = write_transaction && (state_aw_w != AW_idle);
 
 endmodule
 
