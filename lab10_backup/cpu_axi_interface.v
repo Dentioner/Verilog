@@ -74,6 +74,7 @@ module cpu_axi_interface(
 localparam AR_idle = 2'b00;
 localparam AR_finish   = 2'b01;
 localparam AR_init  = 2'b10;
+localparam AR_blocked = 2'b11;
 
 localparam R_idle  = 2'b00;
 localparam R_finish    = 2'b01;
@@ -130,6 +131,8 @@ reg data_req_reg;
 
 reg aw_has_handshaked;  //表示aw信号已经握手
 reg w_has_handshaked;   //表示w信号已经握手  
+
+wire read_blocked;        //发生阻塞的标志信号
 
 assign ar_handshake = arvalid & arready;
 assign r_handshake  = rvalid  & rready;
@@ -202,6 +205,8 @@ begin
     begin
         read_transaction <= 1'b1;
     end
+
+
     else if(r_handshake) //握手之后，下一拍读事务结束，因此非阻塞赋值为0
     begin
         read_transaction <= 1'b0;
@@ -291,15 +296,25 @@ always @(posedge clk)
 begin
     if (~resetn) begin
         // reset
-        state_ar <= AR_init;
+        state_ar <= AR_idle;
+    end
+/*
+    else if ((state_ar == AR_idle) && (test_for_block) && (state_aw_w == AW_W_WORKING)) 
+    begin
+        state_ar <= AR_blocked;
     end
 
-    else if (ar_handshake)
+    else if ((state_ar == AR_blocked) && b_handshake)
+    begin
+        state_ar <= AR_idle;
+    end
+*/
+    else if (ar_handshake && (state_ar == AR_idle))
     begin
         state_ar <= AR_finish;
     end
 
-    else if (r_handshake)
+    else if (r_handshake && (state_ar == AR_finish))
     begin
         state_ar <= AR_idle; 
     end
@@ -307,9 +322,20 @@ end
 
 
 // arvalid
-assign arvalid =    ((araddr == awaddr) && read_transaction && write_transaction) ? 0 : // 简易阻塞机制：同时出现读写事务且读写地址相同时，阻塞
-                    (state_ar != AR_finish) && read_transaction;
+assign arvalid = //read_blocked ? 0 : // 简易阻塞机制：同时出现读写事务且读写地址相同时，阻塞
+                (state_ar == AR_idle) && read_transaction;
 
+
+assign read_blocked = (araddr[31:2] == awaddr[31:2]) && read_transaction && write_transaction;
+//assign read_blocked = (write_transaction) && (sram_data_read_handshake) && (awaddr[31:2] == data_addr[31:2]);
+// 阻塞的条件是：此时正在进行写事务，但是读事务还没开始
+//              准备申请新一次的读事务的时候，首先要在类SRAM端握手，以获得新的读地址
+//              如果这个刚发下来的读地址和现在正在写的写地址一样，那么认为会发生写后读冲突
+//              此时还没有出现读事务，也就是在读事务开始之前阻塞
+//              但是问题是，这个新的地址会不会丢失？需不需要寄存器暂存一下，等到阻塞完毕之后再赋给araddr？
+//              由于此时已经发生sram握手，下一拍master端的valid（req）就会拉低，那么握手+block两个信号一起作为这个寄存器赋值的条件？
+//              然后这个寄存器将数值释放出来的条件是，block信号拉低，还可能有别的信号
+//              但是实际上从仿真的波形上面看，似乎没有出现这种冲突？
 
 // araddr
 always @(posedge clk) 
@@ -590,6 +616,12 @@ end
 
 // bready
 assign bready = write_transaction && (state_aw_w != AW_idle);
+
+
+//debug
+wire test_for_block;
+assign test_for_block = (awaddr[31:2] == araddr[31:2]);
+
 
 endmodule
 
