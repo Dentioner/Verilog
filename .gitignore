@@ -3956,7 +3956,6 @@ state_machine/test_behav.wcfg
 *.rst
 *.js
 *.sh
-*.bit
 *.vdi
 *.rpt
 *.rpx

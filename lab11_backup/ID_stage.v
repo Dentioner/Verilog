@@ -11,6 +11,8 @@ module id_stage(
     input  [`FS_TO_DS_BUS_WD -1:0] fs_to_ds_bus  ,
     //to es
     output                         ds_to_es_valid,
+    output                         ds_valid,
+
     output [`DS_TO_ES_BUS_WD -1:0] ds_to_es_bus  ,
     //to fs
     output [`BR_BUS_WD       -1:0] br_bus        ,
@@ -18,7 +20,7 @@ module id_stage(
     input  [`WS_TO_RF_BUS_WD -1:0] ws_to_rf_bus,
     //阻塞判断信号
     input [40:0] back_to_id_stage_bus_from_exe,
-    input [39:0] back_to_id_stage_bus_from_mem,
+    input [40:0] back_to_id_stage_bus_from_mem,
     input  [`EXECEPTION_BUS_WD - 1:0] exception_bus
 
 );
@@ -28,14 +30,22 @@ wire        ds_ready_go;
 
 wire [31                 :0] fs_pc;
 reg  [`FS_TO_DS_BUS_WD -1:0] fs_to_ds_bus_r;
-assign fs_pc = fs_to_ds_bus[31:0];//记录IF阶段传过来的PC值
+//assign fs_pc = fs_to_ds_bus[31:0];//记录IF阶段传过来的PC值
+
+wire        fs_valid;       //prj11 added
+wire [31:0] fs_npc;         //prj11 added
+
+assign fs_pc = fs_npc;//记录IF阶段传过来的PC值
+
 
 wire [31:0] ds_inst;//这两个wire是ID阶段专用的instruction和PC 线网
 wire [31:0] ds_pc  ;
 wire        exception_adel;
 
 
-assign {exception_adel,   // prj9 added
+assign {fs_valid,
+        fs_npc,
+        exception_adel,   // prj9 added
         ds_inst,
         ds_pc  } = fs_to_ds_bus_r;
 
@@ -179,12 +189,12 @@ wire		 rs_ge_z ;
 wire		 rs_le_z ;
 
 //用于阻塞与前递
-wire ds_ready_go_about_exe;
-wire ds_ready_go_about_mem;
+wire ds_ready_go_about_mfco_exe;
+wire ds_ready_go_about_mfco_mem;
 //wire ds_ready_go_about_wb;
 //wire ds_ready_go_about_id_itself;
-wire ds_ready_go_about_load;
-
+wire ds_ready_go_about_load_exe;
+wire ds_ready_go_about_load_mem;
 
 
 wire es_load_op;
@@ -197,6 +207,7 @@ wire ms_valid;
 wire ms_gr_we;
 wire [4:0] ms_dest;
 wire ms_inst_mfc0;  // prj8 added
+wire ms_to_ws_valid;
 
 wire [31:0] es_result;
 wire [31:0] ms_result;
@@ -223,49 +234,84 @@ wire        may_overflow;   //prj9 added
 
 wire        ds_has_int;     //prj9 added
 
+
+wire [2:0] test_rs;
+wire [2:0] test_rt;
+
+reg         ds_wait_exaddr;
+reg [31:0]  ds_ex_pc_r;
+
+always @(posedge clk) 
+begin
+  if (reset) begin
+    // reset
+    ds_ex_pc_r <= 32'b0;
+  end
+  else if (ds_flush) begin
+    ds_ex_pc_r <= ds_ex_pc;
+  end
+end
+
+always @(posedge clk) begin
+  if (reset) begin
+    // reset
+    ds_wait_exaddr <= 1'b0;
+  end
+  else if (ds_flush) begin
+    ds_wait_exaddr <= 1'b1;
+  end
+  else if (fs_to_ds_bus[31:0] == ds_ex_pc_r)
+  begin
+    ds_wait_exaddr <= 1'b0;
+  end
+end
+
+
+
 assign {ds_flush, ds_ex_pc, ds_has_int} = exception_bus;
 
-assign br_bus       = {br_taken,br_target};
+assign br_bus       = {ds_valid,br_taken,br_target};
 
-assign ds_to_es_bus = {may_overflow ,                   //160:160
-                       in_slot      ,                   //159:159
-                       exception_int,                   //158:158
-                       exception_adel,                  //157:157
-                       exception_rsv,                   //156:156
-                       exception_syscall,               //155:155
-                       exception_break,                 //154:154
-                       s_ext        ,                   //153:153
-                       inst_eret    ,                   //152:152
-                       inst_mfc0    ,                   //151:151
-                       inst_mtc0    ,                   //150:150
-                       mem_left     ,                   //149:149
-                       mem_right    ,                   //148:148
-                       mem_w        ,                   //147:147
-                       mem_h        ,                   //146:146
-                       mem_b        ,                   //145:145
-                       alu_op       ,                   //144:133
-                       load_op      ,                   //132:132 //??????????????bug？？？？？？？？？？？？？整个模块这个信号就没有个源头
-                       src1_is_sa   ,                   //131:131 //这4个信号或许是表示alu的2个操作数从哪儿来的
-                       src1_is_pc   ,                   //130:130
-                       src2_is_imm_symbol_extend    ,   //129:129
-                       src2_is_imm_zero_extend      ,   //128:128
-                       src2_is_8    ,                   //127:127
-                       gr_we        ,                   //126:126
-                       mem_we       ,                   //125:125
-                       inst_mult    ,                   //124:124
-                       inst_multu   ,                   //123:123
-                       inst_div     ,                   //122:122
-                       inst_divu    ,                   //121:121
-                       inst_mfhi    ,                   //120:120
-                       inst_mflo    ,                   //119:119
-                       inst_mthi    ,                   //118:118
-                       inst_mtlo    ,                   //117:117
-                       dest         ,                   //116:112 //似乎是描述目标寄存器是哪个
-                       imm_final    ,                   //111:96  //立即数
-                       rs_value     ,                   //95 :64  //两个寄存器里面存的东西
-                       rt_value     ,                   //63 :32
-                       ds_pc                            //31 :0   //PC
-                      };
+//assign ds_to_es_bus_raw =  {may_overflow ,                   //160:160
+assign ds_to_es_bus =  {may_overflow ,                   //160:160
+                            in_slot      ,                   //159:159
+                            exception_int,                   //158:158
+                            exception_adel,                  //157:157
+                            exception_rsv,                   //156:156
+                            exception_syscall,               //155:155
+                            exception_break,                 //154:154
+                            s_ext        ,                   //153:153
+                            inst_eret    ,                   //152:152
+                            inst_mfc0    ,                   //151:151
+                            inst_mtc0    ,                   //150:150
+                            mem_left     ,                   //149:149
+                            mem_right    ,                   //148:148
+                            mem_w        ,                   //147:147
+                            mem_h        ,                   //146:146
+                            mem_b        ,                   //145:145
+                            alu_op       ,                   //144:133
+                            load_op      ,                   //132:132 //??????????????bug？？？？？？？？？？？？？整个模块这个信号就没有个源头
+                            src1_is_sa   ,                   //131:131 //这4个信号或许是表示alu的2个操作数从哪儿来的
+                            src1_is_pc   ,                   //130:130
+                            src2_is_imm_symbol_extend    ,   //129:129
+                            src2_is_imm_zero_extend      ,   //128:128
+                            src2_is_8    ,                   //127:127
+                            gr_we        ,                   //126:126
+                            mem_we       ,                   //125:125
+                            inst_mult    ,                   //124:124
+                            inst_multu   ,                   //123:123
+                            inst_div     ,                   //122:122
+                            inst_divu    ,                   //121:121
+                            inst_mfhi    ,                   //120:120
+                            inst_mflo    ,                   //119:119
+                            inst_mthi    ,                   //118:118
+                            inst_mtlo    ,                   //117:117
+                            dest         ,                   //116:112 //似乎是描述目标寄存器是哪个
+                            imm_final    ,                   //111:96  //立即数
+                            rs_value     ,                   //95 :64  //两个寄存器里面存的东西
+                            rt_value     ,                   //63 :32
+                            ds_pc                            //31 :0   //PC
+                            };
 
 //assign ds_ready_go    = 1'b1;
 
@@ -277,22 +323,23 @@ assign {es_inst_mfc0,   //40
         es_dest         //4:0
         } = back_to_id_stage_bus_from_exe;
 
-assign {ms_inst_mfc0,   //39
-        ms_result,      //38:7
-        ms_valid,       //6
+assign {ms_inst_mfc0,   //40
+        ms_result,      //39:8
+        ms_valid,       //7
+        ms_to_ws_valid, //6
         ms_gr_we,       //5
         ms_dest         //4:0
         } = back_to_id_stage_bus_from_mem;
 
 //判断逻辑：
 /*
-assign ds_ready_go_about_exe =  (!es_valid)? 1 :                                    //首先看信号是否过期，过期直接为1
+assign ds_ready_go_about_mfco_exe =  (!es_valid)? 1 :                                    //首先看信号是否过期，过期直接为1
                                 (!es_gr_we)? 1 :                                    //再看是否是写寄存器的指令，不是直接为1
                                 (es_dest == rf_raddr1 && rf_raddr1 != 0)? 0 :       //再看写地址和第一个读地址相不相等，相等直接为0
                                 (dst_is_rt == 1) ? 1 :                              //再考虑当前指令是否将rt当作读的信号源，rt不是读的，则直接为1
                                 (es_dest == rf_raddr2 && rf_raddr2 != 0)? 0 : 1;    //再看写地址和第二个读地址相不相等，相等直接为0
                                                                                     //否则为1
-assign ds_ready_go_about_mem =  (!ms_valid)? 1 :                                    //首先看信号是否过期，过期直接为1
+assign ds_ready_go_about_mfco_mem =  (!ms_valid)? 1 :                                    //首先看信号是否过期，过期直接为1
                                 (!ms_gr_we)? 1 :                                    //再看是否是写寄存器的指令，不是直接为1
                                 (ms_dest == rf_raddr1 && rf_raddr1 != 0)? 0 :       //再看写地址和第一个读地址相不相等，相等直接为0
                                 (dst_is_rt == 1) ? 1 :                              //再考虑当前指令是否将rt当作读的信号源，rt不是读的，则直接为1
@@ -304,27 +351,28 @@ assign ds_ready_go_about_wb = (!rf_we)? 1 :                                     
                               (rf_waddr == rf_raddr2 && rf_raddr2 != 0)? 0 : 1;     //否则为1
 assign ds_ready_go_about_id_itself = inst_jal;  //这个条件的优先级最高，因为后续指令如果啥寄存器都没读，那么就不会有什么写后读的问题，随便写
 assign ds_ready_go = ds_ready_go_about_id_itself |  
-                    (ds_ready_go_about_exe & ds_ready_go_about_mem & ds_ready_go_about_wb);  //ID必须与后三个模块同时不冲突才可以搞下去
+                    (ds_ready_go_about_mfco_exe & ds_ready_go_about_mfco_mem & ds_ready_go_about_wb);  //ID必须与后三个模块同时不冲突才可以搞下去
 */
 
-assign ds_ready_go = (ds_flush)? 1 : ds_ready_go_about_exe & ds_ready_go_about_mem & ds_ready_go_about_load; // 如果flush，直接为1，后面的阻塞信号都是假的。否则再判断
+assign ds_ready_go = (ds_flush)? 1 : ds_ready_go_about_mfco_exe & ds_ready_go_about_mfco_mem & ds_ready_go_about_load_exe & ds_ready_go_about_load_mem; // 如果flush，直接为1，后面的阻塞信号都是假的。否则再判断
 
-assign ds_ready_go_about_load = (es_load_op == 0)? 1:                                    //首先看exe是不是load指令，不是直接为1
-                                (inst_lwr | inst_lwl)? 1:                                //再看本条指令是不是lwr或lwl，是就直接为1
-                                (rf_raddr1 == es_dest && es_valid && es_gr_we)? 0 :      //再看此时寄存器1会不会接受前递，是就直接为0
-                                (rf_raddr2 == es_dest && es_valid && es_gr_we)? 0 : 1;   //再看此时寄存器2会不会接受前递，是就直接为0
+assign ds_ready_go_about_load_exe = (es_load_op == 0)? 1:                                    //首先看exe是不是load指令，不是直接为1
+                                    (inst_lwr | inst_lwl)? 1:                                //再看本条指令是不是lwr或lwl，是就直接为1
+                                    (rf_raddr1 == es_dest && es_valid && es_gr_we)? 0 :      //再看此时寄存器1会不会接受前递，是就直接为0
+                                    (rf_raddr2 == es_dest && es_valid && es_gr_we)? 0 : 1;   //再看此时寄存器2会不会接受前递，是就直接为0
                                                                                          //否则为1
 
-assign ds_ready_go_about_exe = (es_inst_mfc0 == 0)? 1:                                  //首先看exe是不是mfc0指令，不是直接为1
-                               (rf_raddr1 == es_dest && es_valid && es_gr_we)? 0 :      //再看此时寄存器1会不会接受前递，是就直接为0
-                               (rf_raddr2 == es_dest && es_valid && es_gr_we)? 0 : 1;   //再看此时寄存器2会不会接受前递，是就直接为0
+assign ds_ready_go_about_mfco_exe = (es_inst_mfc0 == 0)? 1:                                  //首先看exe是不是mfc0指令，不是直接为1
+                                    (rf_raddr1 == es_dest && es_valid && es_gr_we)? 0 :      //再看此时寄存器1会不会接受前递，是就直接为0
+                                    (rf_raddr2 == es_dest && es_valid && es_gr_we)? 0 : 1;   //再看此时寄存器2会不会接受前递，是就直接为0
                                                                                         //否则为1 
 
-assign ds_ready_go_about_mem = (ms_inst_mfc0 == 0)? 1:                                  //首先看mem是不是mfc0指令，不是直接为1
-                               (rf_raddr1 == ms_dest && ms_valid && ms_gr_we)? 0 :      //再看此时寄存器1会不会接受前递，是就直接为0
-                               (rf_raddr2 == ms_dest && ms_valid && ms_gr_we)? 0 : 1;   //再看此时寄存器2会不会接受前递，是就直接为0
+assign ds_ready_go_about_mfco_mem = (ms_inst_mfc0 == 0)? 1:                                  //首先看mem是不是mfc0指令，不是直接为1
+                                    (rf_raddr1 == ms_dest && ms_valid && ms_gr_we)? 0 :      //再看此时寄存器1会不会接受前递，是就直接为0
+                                    (rf_raddr2 == ms_dest && ms_valid && ms_gr_we)? 0 : 1;   //再看此时寄存器2会不会接受前递，是就直接为0
                                                                                         //否则为1 
 
+assign ds_ready_go_about_load_mem = (test_rs != 2 && test_rt != 2)? 1: ms_to_ws_valid;
 
 /*
 assign ds_ready_go = (es_load_op == 0)? 1:                                    //首先看exe是不是load指令，不是直接为1
@@ -360,14 +408,24 @@ always @(posedge clk) begin
     else if(ds_flush) begin
         ds_valid <= 1'b0;
     end
-    else if (es_allowin) begin
+    else if (ds_allowin) begin
         ds_valid <= fs_to_ds_valid;
     end
 end
 
 
 always @(posedge clk) begin
-    if (fs_to_ds_valid && ds_allowin) begin
+    if (ds_flush)
+    begin
+        fs_to_ds_bus_r <= 98'b0;
+    end
+
+    else if (fs_to_ds_valid && ds_allowin && (fs_to_ds_bus[31:0] == ds_ex_pc_r) && ds_wait_exaddr) begin
+        fs_to_ds_bus_r <= fs_to_ds_bus;
+    end
+
+    else if (fs_to_ds_valid && ds_allowin && (!ds_wait_exaddr))
+    begin
         fs_to_ds_bus_r <= fs_to_ds_bus;
     end
 end
@@ -543,6 +601,19 @@ assign rt_value = (rf_raddr2 == es_dest && es_valid && es_gr_we)?  es_result :  
                                                                                           //都不等于，再用rf读出来的数据
 //以上每一级前递信号都要考虑是否是有效值
 
+
+assign test_rs = (rf_raddr1 == es_dest && es_valid && es_gr_we)?  1 :            //首先看源寄存器号是不是等于alu的目标寄存器号，等于的话就可以将alu前递的值用上
+                  (rf_raddr1 == ms_dest && ms_valid && ms_gr_we)?  2 :            //否则再看源寄存器号是不是等于mem的目标寄存器号，等于的话就将mem前递的值用上
+                  (rf_raddr1 == rf_waddr && rf_we)? 3 : 0;                 //否则再看源寄存器号是不是等于wb的目标寄存器号，等于的话就将wb前递的值用上
+                                                                                          //都不等于，再用rf读出来的数据
+
+assign test_rt = (rf_raddr2 == es_dest && es_valid && es_gr_we)?  1 :            //首先看源寄存器号是不是等于alu的目标寄存器号，等于的话就可以将alu前递的值用上
+                  (rf_raddr2 == ms_dest && ms_valid && ms_gr_we)?  2 :            //否则再看源寄存器号是不是等于mem的目标寄存器号，等于的话就将mem前递的值用上
+                  (rf_raddr2 == rf_waddr && rf_we)? 3 : 0;                 //否则再看源寄存器号是不是等于wb的目标寄存器号，等于的话就将wb前递的值用上
+                                                                                          //都不等于，再用rf读出来的数据
+//以上每一级前递信号都要考虑是否是有效值
+
+
 assign rs_eq_rt = (rs_value == rt_value);
 assign rs_ge_z  = (rs_value[31] == 1'b0);		//prj7 added
 assign rs_le_z  = (rs_value[31] == 1'b1 || rs_value == 32'b0);		//prj7 added
@@ -657,6 +728,9 @@ inst_break); // 直接复制上面的wire定义的一堆代码，因此显得比较散
 
 
 
+
+wire test_ds;
+assign test_ds = (ds_valid != ds_to_es_valid);
 
 
 

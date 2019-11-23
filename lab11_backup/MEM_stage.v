@@ -17,7 +17,7 @@ module mem_stage(
     input                          data_sram_data_ok,
 
     input  [36:0]    back_to_mem_stage_bus_from_wb,
-    output [39:0]    back_to_id_stage_bus_from_mem,
+    output [40:0]    back_to_id_stage_bus_from_mem,
     //output [36:0]   mem_forwarding
     input  [`EXECEPTION_BUS_WD - 1:0] exception_bus,
     output           mem_has_exception // 此信号用于给EXE级监听是否在MEM产生例外以免HI/LO/Store指令产生了错误的值
@@ -69,6 +69,9 @@ wire        exception_int;          //prj9 added
 
 wire        ms_has_int;             //prj9 added
 
+
+
+
 //wire [31:0] bad_vaddr;              //prj9 added
 
 //prj11 added
@@ -111,8 +114,7 @@ assign rt_final_result = (ms_dest == ws_dest_r) ? ws_final_result_r :
 wire [31:0] mem_result;
 wire [31:0] ms_final_result;
 
-assign ms_to_ws_bus = {//bad_vaddr,               //121:90
-                       ms_in_slot     ,         //89:89
+assign ms_to_ws_bus = {ms_in_slot     ,         //89:89
                        exception_int,           //88:88
                        exception_adel_if,       //87:87
                        exception_rsv,           //86:86
@@ -132,7 +134,9 @@ assign ms_to_ws_bus = {//bad_vaddr,               //121:90
                       };
 assign ms_addr_low_2 = ms_alu_result[1:0];
 
-assign ms_ready_go    = 1'b1;
+//assign ms_ready_go    = 1'b1;
+assign ms_ready_go    = (ms_res_from_mem)? data_sram_data_ok : 1'b1; //load指令须等到data_ok之后才能继续动，store暂时不用
+
 assign ms_allowin     = !ms_valid || ms_ready_go && ws_allowin;
 assign ms_to_ws_valid = ms_valid && ms_ready_go;
 /*
@@ -171,33 +175,33 @@ end
 
 //assign mem_result = data_sram_rdata;
 
-assign mem_result = ms_mem_left  ? (ms_addr_low_2 == 2'b00 ? {data_sram_rdata[ 7: 0], rt_final_result[23: 0]} :
-                                    ms_addr_low_2 == 2'b01 ? {data_sram_rdata[15: 0], rt_final_result[15: 0]} :
-                                    ms_addr_low_2 == 2'b10 ? {data_sram_rdata[23: 0], rt_final_result[ 7: 0]} :
-                                                             data_sram_rdata
+assign mem_result = ms_mem_left  ? (ms_addr_low_2 == 2'b00 ? {true_rdata[ 7: 0], rt_final_result[23: 0]} :
+                                    ms_addr_low_2 == 2'b01 ? {true_rdata[15: 0], rt_final_result[15: 0]} :
+                                    ms_addr_low_2 == 2'b10 ? {true_rdata[23: 0], rt_final_result[ 7: 0]} :
+                                                             true_rdata
                                    ) :
-                    ms_mem_right ? (ms_addr_low_2 == 2'b11 ? {rt_final_result[31: 8], data_sram_rdata[31:24]} :
-                                    ms_addr_low_2 == 2'b10 ? {rt_final_result[31:16], data_sram_rdata[31:16]} :
-                                    ms_addr_low_2 == 2'b01 ? {rt_final_result[31:24], data_sram_rdata[31: 8]} :
-                                                             data_sram_rdata
+                    ms_mem_right ? (ms_addr_low_2 == 2'b11 ? {rt_final_result[31: 8], true_rdata[31:24]} :
+                                    ms_addr_low_2 == 2'b10 ? {rt_final_result[31:16], true_rdata[31:16]} :
+                                    ms_addr_low_2 == 2'b01 ? {rt_final_result[31:24], true_rdata[31: 8]} :
+                                                             true_rdata
                                    ) :
-                    ms_mem_b     ? (ms_addr_low_2 == 2'b00 ? {{24{ms_s_ext&data_sram_rdata[ 7]}}, data_sram_rdata[ 7: 0]} :
-                                    ms_addr_low_2 == 2'b01 ? {{24{ms_s_ext&data_sram_rdata[15]}}, data_sram_rdata[15: 8]} :
-                                    ms_addr_low_2 == 2'b10 ? {{24{ms_s_ext&data_sram_rdata[23]}}, data_sram_rdata[23:16]} :
-                                                             {{24{ms_s_ext&data_sram_rdata[31]}}, data_sram_rdata[31:24]}
+                    ms_mem_b     ? (ms_addr_low_2 == 2'b00 ? {{24{ms_s_ext&true_rdata[ 7]}}, true_rdata[ 7: 0]} :
+                                    ms_addr_low_2 == 2'b01 ? {{24{ms_s_ext&true_rdata[15]}}, true_rdata[15: 8]} :
+                                    ms_addr_low_2 == 2'b10 ? {{24{ms_s_ext&true_rdata[23]}}, true_rdata[23:16]} :
+                                                             {{24{ms_s_ext&true_rdata[31]}}, true_rdata[31:24]}
                                    ) :
-                    ms_mem_h     ? (ms_addr_low_2 == 2'b00 ? {{16{ms_s_ext&data_sram_rdata[15]}}, data_sram_rdata[15: 0]} :
-                                                             {{16{ms_s_ext&data_sram_rdata[31]}}, data_sram_rdata[31:16]}
+                    ms_mem_h     ? (ms_addr_low_2 == 2'b00 ? {{16{ms_s_ext&true_rdata[15]}}, true_rdata[15: 0]} :
+                                                             {{16{ms_s_ext&true_rdata[31]}}, true_rdata[31:16]}
                                    ) :
-                                   data_sram_rdata;
+                                   true_rdata;
 
 assign ms_final_result = (ms_res_from_mem && ~exception_adel_exe) ? mem_result  : 
                          (ms_inst_mtc0)    ? ms_rt_value : ms_alu_result;
 
 
-assign back_to_id_stage_bus_from_mem = {ms_inst_mfc0,       //39
-                                        ms_final_result,    //38:7
-                                        //ms_valid,           //6
+assign back_to_id_stage_bus_from_mem = {ms_inst_mfc0,       //40
+                                        ms_final_result,    //39:8
+                                        ms_valid,           //7
                                         ms_to_ws_valid,     //6
                                         ms_gr_we,           //5
                                         ms_dest             //4:0
@@ -220,27 +224,37 @@ assign mem_has_exception = (exception_int | exception_adel_if | exception_adel_e
 
 
 //rdata 易变处理
-assign true_rdata = buf_rdata_valid ? buf_rdata : data_sram_rdata;
-   
+//assign true_rdata = buf_rdata_valid ? buf_rdata : data_sram_rdata;
+assign true_rdata = data_sram_data_ok ? data_sram_rdata : buf_rdata;   
 always @(posedge clk)
 begin
     if(reset)
     begin
         buf_rdata_valid <= 1'b0;
     end
-    else if(ds_allowin)
+    else if(ws_allowin && ms_to_ws_valid)
     begin
-        buf_npc_valid <= 1'b0;
+        buf_rdata_valid <= 1'b0;
     end
     else if(!buf_rdata_valid)
     begin
         buf_rdata_valid <= 1'b1;
     end
     
-    if(!buf_rdata_valid)
-    begin
-        buf_rdata <= data_sram_rdata;
-    end
+end
+
+
+always @(posedge clk) 
+begin
+  if (reset) 
+  begin
+    // reset
+    buf_rdata <= 32'b0;
+  end
+  else if (data_sram_data_ok) 
+  begin
+    buf_rdata <= data_sram_rdata;
+  end
 end
 
 endmodule 

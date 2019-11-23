@@ -2,7 +2,7 @@ module mycpu_top(
     input [ 5:0] int    ,   //high active
 
     input aclk   ,   
-    input areset,
+    input aresetn,
 
     output [ 3:0] arid,   
     output [31:0] araddr ,
@@ -81,7 +81,7 @@ wire        data_sram_data_ok  ;
     mycpu_core cpu1(
     .int(int),
     .clk(aclk),
-    .resetn(~areset),
+    .resetn(aresetn),
 
     .inst_sram_req      (inst_sram_req)     ,
     .inst_sram_wr       (inst_sram_wr)      ,
@@ -113,7 +113,7 @@ wire        data_sram_data_ok  ;
 
     cpu_axi_interface itf1(
     .clk(aclk)           ,
-    .resetn(~areset)     ,
+    .resetn(aresetn)     ,
 
     //inst sram-like
     .inst_req    (inst_sram_req    ),
@@ -245,12 +245,15 @@ wire [`BR_BUS_WD       -1:0] br_bus;      //32  bit
 
 //×èÈû&Ç°µÝ
 wire [40:0] back_to_id_stage_bus_from_exe;
-wire [39:0] back_to_id_stage_bus_from_mem;
+wire [40:0] back_to_id_stage_bus_from_mem;
 wire [36:0] back_to_mem_stage_bus_from_wb;
 
 //Òì³£
 wire [`EXECEPTION_BUS_WD -1:0] exception_bus;
 wire                           mem_has_exception;
+
+wire ds_valid; //test
+
 // IF stage
 if_stage if_stage(
     .clk            (clk            ),
@@ -288,6 +291,7 @@ id_stage id_stage(
     .fs_to_ds_bus   (fs_to_ds_bus   ),
     //to es
     .ds_to_es_valid (ds_to_es_valid ),
+    .ds_valid       (ds_valid       ),  // test 
     .ds_to_es_bus   (ds_to_es_bus   ),
     //to fs
     .br_bus         (br_bus         ),
@@ -307,6 +311,7 @@ exe_stage exe_stage(
     .es_allowin     (es_allowin     ),
     //from ds
     .ds_to_es_valid (ds_to_es_valid ),
+    .ds_valid       (ds_valid       ), //test
     .ds_to_es_bus   (ds_to_es_bus   ),
     //to ms
     .es_to_ms_valid (es_to_ms_valid ),
@@ -342,7 +347,7 @@ mem_stage mem_stage(
     //from data-sram
     .data_sram_rdata(data_sram_rdata),
     .data_sram_data_ok(data_sram_data_ok),
-    
+
     .back_to_mem_stage_bus_from_wb(back_to_mem_stage_bus_from_wb),
     .back_to_id_stage_bus_from_mem(back_to_id_stage_bus_from_mem),
     .exception_bus(exception_bus),

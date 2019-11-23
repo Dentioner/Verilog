@@ -161,10 +161,10 @@ assign wlast    = 1'b1;
 
 assign inst_addr_ok = (read_transaction)?  0 :
                       (write_transaction)? 0 :
-                      (data_req)? 0 : 1;
+                      (data_req)? 0 : inst_req;
 
 assign data_addr_ok = (read_transaction)?  0 :
-                      (write_transaction)? 0 : 1;
+                      (write_transaction)? 0 : data_req;
 
 
 
@@ -201,7 +201,7 @@ begin
         // reset
         read_transaction <= 1'b0;
     end
-    else if ((~read_transaction) && (read_signal)) // 读事务的赋值逻辑：观测到读信号，而且读事务寄存器还没被置为1 
+    else if ((~read_transaction) && (~write_transaction) && (read_signal) && (!write_signal)) // 读事务的赋值逻辑：观测到读信号，而且读事务寄存器还没被置为1 
     begin
         read_transaction <= 1'b1;
     end
@@ -220,7 +220,7 @@ begin
         // reset
         write_transaction <= 1'b0;
     end
-    else if ((~write_transaction) && (write_signal)) // 写事务的赋值逻辑：观测到写信号，而且写事务寄存器还没被置为1 
+    else if ((~write_transaction) && (~read_transaction) && (write_signal)) // 写事务的赋值逻辑：观测到写信号，而且写事务寄存器还没被置为1 
     begin
         write_transaction <= 1'b1;
     end
@@ -255,7 +255,7 @@ begin
 
     else if (sram_data_read_handshake | sram_data_write_handshake | sram_inst_read_handshake | sram_inst_write_handshake) 
     begin
-        inst_req_reg <= inst_req;
+        inst_req_reg <= (inst_req) & (~data_req);
     end
 
 end
@@ -571,9 +571,11 @@ begin
         // reset
         wstrb <= 0;
     end
-    else if (wvalid) 
+    //else if (wvalid) 
+    else if (sram_data_write_handshake)
     begin
-        wstrb <= wstrb_wire_all;
+        //wstrb <= wstrb_wire_all;
+        wstrb <= data_wstrb;
     end
 end
 

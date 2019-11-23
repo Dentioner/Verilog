@@ -8,6 +8,7 @@ module exe_stage(
     output                         es_allowin    ,
     //from ds
     input                          ds_to_es_valid,
+    input                          ds_valid,
     input  [`DS_TO_ES_BUS_WD -1:0] ds_to_es_bus  ,
     //to ms
     output                         es_to_ms_valid,
@@ -15,7 +16,7 @@ module exe_stage(
     // data sram interface
     //output        data_sram_en   ,
     //output [ 3:0] data_sram_wen  ,
-    output        data_sram_req,
+    output  reg   data_sram_req,
     output        data_sram_wr,
     output [ 1:0] data_sram_size,
     output [ 3:0] data_sram_wstrb,
@@ -165,6 +166,38 @@ wire        es_has_exception;   // prj9 added
 wire        data_sram_size_left;  //prj11 added
 wire        data_sram_size_right; //prj11 added
 
+reg  [ 3:0] data_sram_wstrb_buf;
+wire [ 3:0] data_sram_wstrb_raw;
+
+reg         es_wait_exaddr;
+reg  [31:0] es_ex_pc_r;
+
+always @(posedge clk) 
+begin
+  if (reset) begin
+    // reset
+    es_ex_pc_r <= 32'b0;
+  end
+  else if (es_flush) begin
+    es_ex_pc_r <= es_ex_pc;
+  end
+end
+
+always @(posedge clk) begin
+  if (reset) begin
+    // reset
+    es_wait_exaddr <= 1'b0;
+  end
+  else if (es_flush) begin
+    es_wait_exaddr <= 1'b1;
+  end
+  else if (ds_to_es_bus[31:0] == es_ex_pc_r)
+  begin
+    es_wait_exaddr <= 1'b0;
+  end
+end
+
+
 assign {es_flush, es_ex_pc, es_has_int} = exception_bus;
 
 
@@ -213,9 +246,10 @@ assign exe_forwarding = {es_alu_result,     //36:5
 //assign es_ready_go    = 1'b1;
 //assign es_ready_go = (es_flush)? 1 : 
 //                     (!es_div_en)? 1 : div_finished;
-assign es_ready_go = (es_flush)? 1 : 
-                     (!es_div_en)? data_sram_addr_ok : div_finished & data_sram_addr_ok;
-
+assign es_ready_go = (es_flush)? 1'b1 : 
+                     //(!es_div_en)? (data_sram_addr_ok & es_load_op) : div_finished;
+                     (es_div_en)? div_finished :
+                     (es_load_op)? data_sram_addr_ok : 1'b1;
 
 
 assign es_allowin     = !es_valid || es_ready_go && ms_allowin;
@@ -249,7 +283,17 @@ end
 
 
 always @(posedge clk) begin
-    if (ds_to_es_valid && es_allowin) begin
+    if (es_flush)
+    begin
+        ds_to_es_bus_r <= 161'b0;
+    end
+
+    else if (ds_to_es_valid && es_allowin && (ds_to_es_bus[31:0] == es_ex_pc_r) && es_wait_exaddr) begin
+
+        ds_to_es_bus_r <= ds_to_es_bus;
+    end
+
+    else if (ds_to_es_valid && es_allowin && (!es_wait_exaddr)) begin
         ds_to_es_bus_r <= ds_to_es_bus;
     end
 end
@@ -272,9 +316,62 @@ alu u_alu(
 assign es_addr_low_2 = es_alu_result[1:0];
 
 //assign data_sram_en    = (es_has_exception | mem_has_exception | es_flush)? 1'b0 : 1'b1;
-assign data_sram_req   = (es_has_exception | mem_has_exception | es_flush)? 1'b0 : ms_allowin;
+//assign data_sram_req   = (es_has_exception | mem_has_exception | es_flush)? 1'b0 : ms_allowin;
+always @(posedge clk) 
+begin
+  if (reset) 
+  begin
+    // reset
+    data_sram_req <= 1'b0;
+  end
+  //else if (es_has_exception | mem_has_exception | es_flush) 
+  else if (mem_has_exception | es_flush) 
+  begin
+    data_sram_req <= 1'b0;
+  end
+
+  else if (data_sram_req && data_sram_addr_ok)
+  begin
+    data_sram_req <= 1'b0;
+  end
+
+  else if (ms_allowin && es_valid)
+  begin
+    if ((es_load_op || es_mem_we) && (data_sram_req == 1'b0) )
+    begin
+      data_sram_req <= 1'b1;
+    end
+    else if ((!es_load_op) && (!es_mem_we))
+    begin
+      data_sram_req <= 1'b0;  
+    end
+  end
+
+
+end
+
+
 assign data_sram_wen_b = es_mem_we&&es_valid ? 1'b1 : 1'b0;
-assign data_sram_wen   =(es_has_exception)? 4'b0 : //如果本级已经查出例外，不要写mem
+
+assign data_sram_wr    = es_mem_we & (~es_has_exception);//data_sram_wen_b; // test...
+
+assign data_sram_wstrb = (es_valid)? data_sram_wstrb_raw : data_sram_wstrb_buf;
+
+always @(posedge clk) 
+begin
+  if (reset) 
+  begin
+    // reset
+    data_sram_wstrb_buf <= 4'b0;
+  end
+  else if (es_valid) 
+  begin
+    data_sram_wstrb_buf <= data_sram_wstrb_raw;
+  end
+end
+
+
+assign data_sram_wstrb_raw =(es_has_exception)? 4'b0 : //如果本级已经查出例外，不要写mem
 
                         (mem_has_exception || es_flush)? 4'b0 : //如果下家发生了例外，这里写使能得打住
 
@@ -392,16 +489,20 @@ begin
 end
 
 
-assign data_sram_size = (mem_b)? 0 :  //  lb/lbu/sb  
-                        (mem_h)? 1 :  //  lh/lhu/sh
-                        (mem_w)? 2 :  //  lw/sw
-                        (mem_left)?   data_sram_size_left   :     //  lwl/swl
-                        (mem_right)?  data_sram_size_right  : 0;  //  lwr/swr
+assign data_sram_size = (es_mem_b)? 0 :  //  lb/lbu/sb  
+                        (es_mem_h)? 1 :  //  lh/lhu/sh
+                        (es_mem_w)? 2 :  //  lw/sw
+                        (es_mem_left)?   data_sram_size_left   :     //  lwl/swl
+                        (es_mem_right)?  data_sram_size_right  : 0;  //  lwr/swr
 
 assign data_sram_size_left  = (data_sram_addr[1:0] == 2'b00)? 0 :
                               (data_sram_addr[1:0] == 2'b01)? 1 : 2; // 最低2位为2或3的时候size都是2
 
 assign data_sram_size_right = (data_sram_addr[1:0] == 2'b10)? 1 :
                               (data_sram_addr[1:0] == 2'b11)? 0 : 2; // 最低2位为0或1的时候size都是2
+
+
+
+
 
 endmodule
